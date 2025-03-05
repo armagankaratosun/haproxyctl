@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package utils
 
 import (
@@ -21,56 +22,123 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
 	"gopkg.in/yaml.v2"
 )
 
-// FormatOutput formats data as YAML, JSON, or a table if no format is specified
-func FormatOutput(data interface{}, outputFormat string) {
-	// If the data is a JSON string, parse it before formatting
-	var parsedData interface{}
+// LoadYAMLFile reads the content of a YAML file
+func LoadYAMLFile(filepath string) ([]byte, error) {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filepath, err)
+	}
+	return data, nil
+}
 
+func FormatOutput(data interface{}, outputFormat string) {
+	// Normalize `[]map[string]interface{}` to `[]interface{}`
 	switch v := data.(type) {
-	case string:
-		// Try to unmarshal the JSON string into a structured object
-		if err := json.Unmarshal([]byte(v), &parsedData); err != nil {
-			parsedData = v // If parsing fails, just print raw string
+	case []map[string]interface{}:
+		var genericList []interface{}
+		for _, item := range v {
+			genericList = append(genericList, item)
 		}
-	default:
-		parsedData = v
+		data = genericList
 	}
 
-	// Detect if parsedData is a single object `{}` and convert it to a list `[]` for table formatting
-	if outputFormat == "" {
-		switch v := parsedData.(type) {
+	// Handle default format
+	if outputFormat == "table" || outputFormat == "" {
+		switch v := data.(type) {
 		case map[string]interface{}:
-			printTable([]interface{}{v}) // Convert to list and print as a table
+			printTable([]interface{}{v}) // single object as table
 			return
 		case []interface{}:
-			printTable(v) // Print list as a table
+			printTable(v) // list of objects as table
 			return
+		default:
+			log.Fatalf("Cannot print table for this data type: %T", v)
 		}
-		outputFormat = "json" // Default to JSON for non-table cases
 	}
 
-	// Handle JSON/YAML output
+	// YAML and JSON (explicitly requested)
 	switch outputFormat {
 	case "yaml":
-		yamlOutput, err := yaml.Marshal(parsedData)
+		yamlOutput, err := yaml.Marshal(data)
 		if err != nil {
-			log.Fatal("Failed to generate YAML:", err)
+			log.Fatalf("Failed to generate YAML: %v", err)
 		}
 		fmt.Println(string(yamlOutput))
+
 	case "json":
-		jsonOutput, err := json.MarshalIndent(parsedData, "", "    ")
+		jsonOutput, err := json.MarshalIndent(data, "", "    ")
 		if err != nil {
-			log.Fatal("Failed to generate JSON:", err)
+			log.Fatalf("Failed to generate JSON: %v", err)
 		}
 		fmt.Println(string(jsonOutput))
+
 	default:
-		log.Fatalf("Invalid output format: %s. Supported formats: yaml, json", outputFormat)
+		log.Fatalf("Invalid output format: %s. Supported formats: yaml, json, table", outputFormat)
+	}
+}
+
+// ConvertMapToTyped converts string map into map[string]interface{}
+func ConvertMapToTyped(input map[string]string, intFields []string) map[string]interface{} {
+	result := make(map[string]interface{})
+	for k, v := range input {
+		if Contains(intFields, k) {
+			intVal, err := strconv.Atoi(v)
+			if err != nil {
+				log.Fatalf("Failed to convert %s to integer: %v", k, err)
+			}
+			result[k] = intVal
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+// PrintResourceDescription prints structured details for a resource (backend, frontend, etc.)
+func PrintResourceDescription(resourceType string, resource map[string]interface{}, sections map[string][]string, servers []map[string]interface{}) {
+	fmt.Printf("%s: %s\n", resourceType, resource["name"])
+
+	if basics, exists := sections["basic"]; exists {
+		for _, field := range basics {
+			if value, ok := resource[field]; ok && value != "" {
+				fmt.Printf("%s: %v\n", formatFieldName(field), value)
+			}
+		}
+	}
+
+	for sectionName, fields := range sections {
+		if sectionName == "basic" {
+			continue
+		}
+		fmt.Printf("\n%s:\n", strings.Title(sectionName))
+		for _, field := range fields {
+			if value, ok := resource[field]; ok && value != "" {
+				fmt.Printf("- %s: %v\n", formatFieldName(field), value)
+			}
+		}
+	}
+
+	if len(servers) > 0 {
+		fmt.Println("\nServers:")
+		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+		fmt.Fprintf(w, "NAME\tADDRESS\tPORT\tWEIGHT\n")
+		fmt.Fprintf(w, "----\t-------\t----\t------\n")
+		for _, server := range servers {
+			fmt.Fprintf(w, "%s\t%s\t%v\t%v\n",
+				server["name"],
+				server["address"],
+				server["port"],
+				server["weight"],
+			)
+		}
+		w.Flush()
 	}
 }
 
@@ -81,32 +149,26 @@ func printTable(data []interface{}) {
 		return
 	}
 
-	// Extract column headers from the first object
 	firstRow, ok := data[0].(map[string]interface{})
 	if !ok {
 		fmt.Println("Invalid data format.")
 		return
 	}
 
-	// Determine and sort headers
 	headers := getSortedKeys(firstRow)
 
-	// Create a tabwriter for aligned output
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 
-	// Print column headers in uppercase like kubectl
 	for _, key := range headers {
 		fmt.Fprintf(w, "%s\t", strings.ToUpper(key))
 	}
 	fmt.Fprintln(w)
 
-	// Print a separator line
 	for range headers {
 		fmt.Fprintf(w, "--------\t")
 	}
 	fmt.Fprintln(w)
 
-	// Print rows with aligned values
 	for _, row := range data {
 		rowMap, ok := row.(map[string]interface{})
 		if !ok {
@@ -118,43 +180,37 @@ func printTable(data []interface{}) {
 		fmt.Fprintln(w)
 	}
 
-	// Flush output
 	w.Flush()
 }
 
 // getSortedKeys ensures "NAME" or similar fields appear first, with the rest sorted alphabetically
 func getSortedKeys(row map[string]interface{}) []string {
-	priorityFields := []string{"name", "acl_name", "id"} // Prioritize these fields
+	priorityFields := []string{"name", "acl_name", "id"}
 
 	var primaryColumn string
 	var otherColumns []string
 
 	for key := range row {
 		lowerKey := strings.ToLower(key)
-		isPriority := false
-
-		for _, priority := range priorityFields {
-			if lowerKey == priority {
-				primaryColumn = key
-				isPriority = true
-				break
-			}
-		}
-
-		if !isPriority {
+		if Contains(priorityFields, lowerKey) {
+			primaryColumn = key
+		} else {
 			otherColumns = append(otherColumns, key)
 		}
 	}
 
-	sort.Strings(otherColumns) // Sort remaining fields alphabetically
+	sort.Strings(otherColumns)
 
-	// Ensure the detected "name-like" column is first
 	if primaryColumn != "" {
 		return append([]string{primaryColumn}, otherColumns...)
 	}
 
-	// If no priority field is found, return sorted fields normally
 	return otherColumns
+}
+
+// formatFieldName makes fields look prettier (timeout_client -> Timeout client)
+func formatFieldName(name string) string {
+	return strings.Title(strings.ReplaceAll(name, "_", " "))
 }
 
 // formatValue ensures human-readable formatting for values
@@ -169,20 +225,51 @@ func formatValue(value interface{}) string {
 		return fmt.Sprintf("%.0f", v) // Remove decimals if number
 	case bool:
 		return fmt.Sprintf("%t", v) // Print true/false
+	case []interface{}:
+		return formatList(v) // <- Handle lists (like servers)
 	case map[string]interface{}:
-		return formatNestedMap(v)
+		return formatNestedMap(v) // existing handling
 	default:
 		return fmt.Sprintf("%v", v)
 	}
 }
 
+// TODO
+func formatList(list []interface{}) string {
+	if len(list) == 0 {
+		return "-"
+	}
+
+	// Special case: detect if this is a list of servers
+	if first, ok := list[0].(map[string]interface{}); ok && isServerObject(first) {
+		var servers []string
+		for _, item := range list {
+			server, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			servers = append(servers, fmt.Sprintf("%s (%s:%v)", server["name"], server["address"], server["port"]))
+		}
+		return strings.Join(servers, ", ")
+	}
+
+	// Fallback for generic lists (non-servers)
+	return fmt.Sprintf("%v", list)
+}
+
+func isServerObject(item map[string]interface{}) bool {
+	_, hasName := item["name"]
+	_, hasAddress := item["address"]
+	_, hasPort := item["port"]
+	return hasName && hasAddress && hasPort
+}
+
 // formatNestedMap handles nested structures (like balance.algorithm)
 func formatNestedMap(nested map[string]interface{}) string {
-	// Try to extract useful info (like `balance.algorithm`)
 	if len(nested) == 1 {
 		for _, v := range nested {
 			return formatValue(v)
 		}
 	}
-	return "{...}" // If more than one, just show `{...}`
+	return "{...}"
 }

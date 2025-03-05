@@ -16,11 +16,8 @@ limitations under the License.
 package configuration
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
 
 	"haproxyctl/utils"
 
@@ -38,9 +35,9 @@ var GetConfigurationCmd = &cobra.Command{
 var getConfigurationVersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Fetch HAProxy configuration version",
-	Long:  `Retrieves the current HAProxy configuration version and returns it as JSON.`,
+	Long:  `Retrieves the current HAProxy configuration version.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		getConfigurationVersion()
+		handleGetConfigurationVersion(cmd)
 	},
 }
 
@@ -50,45 +47,49 @@ var getConfigurationRawCmd = &cobra.Command{
 	Short: "Fetch raw HAProxy configuration",
 	Long:  `Retrieves the full raw HAProxy configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		getConfiguration()
+		handleGetConfigurationRaw(cmd)
 	},
 }
 
-// getConfigurationVersion fetches the HAProxy configuration version and returns JSON output in a pretty format
-func getConfigurationVersion() {
-	data, err := utils.SendRequest("GET", "/services/haproxy/configuration/version", nil, nil)
+// handleGetConfigurationVersion fetches and displays the configuration version
+func handleGetConfigurationVersion(cmd *cobra.Command) {
+	outputFormat := utils.GetFlagString(cmd, "output")
+
+	version, err := utils.GetConfigurationVersion()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
-	versionStr := strings.TrimSpace(string(data)) // Remove newline and spaces
+	// Build a structured object to support multiple output formats
+	versionData := map[string]int{"version": version}
 
-	versionInt, err := strconv.Atoi(versionStr)
-	if err != nil {
-		log.Fatal("Failed to parse version as an integer:", err)
-	}
-
-	// Create JSON output
-	jsonOutput, err := json.MarshalIndent(map[string]int{"version": versionInt}, "", "    ")
-	if err != nil {
-		log.Fatal("Failed to format JSON:", err)
-	}
-
-	fmt.Println(string(jsonOutput)) // Print pretty JSON output
+	utils.FormatOutput(versionData, outputFormat)
 }
 
-// getConfiguration fetches the raw HAProxy configuration
-func getConfiguration() {
-	data, err := utils.SendRequest("GET", "/services/haproxy/configuration/raw", nil, nil)
+// handleGetConfigurationRaw fetches and displays the raw HAProxy configuration
+func handleGetConfigurationRaw(cmd *cobra.Command) {
+	data, err := utils.GetResource("/services/haproxy/configuration/raw")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to fetch raw configuration: %v", err)
 	}
 
-	fmt.Println(string(data)) // Print raw HAProxy configuration
+	outputFormat := utils.GetFlagString(cmd, "output")
+
+	// For raw, "table" doesn't make sense — just default to plain string if output not set
+	if outputFormat == "" {
+		fmt.Println(data) // Print directly if no output format specified
+		return
+	}
+
+	utils.FormatOutput(data, outputFormat)
 }
 
 func init() {
 	// Attach subcommands
 	GetConfigurationCmd.AddCommand(getConfigurationVersionCmd)
 	GetConfigurationCmd.AddCommand(getConfigurationRawCmd)
+
+	// Add --output to both subcommands
+	getConfigurationVersionCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
+	getConfigurationRawCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
 }

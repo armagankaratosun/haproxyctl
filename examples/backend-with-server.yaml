@@ -1,0 +1,22 @@
+apiVersion: haproxyctl/v1
+kind: Backend
+name: example-backend-with-servers
+mode: http
+balance:
+  algorithm: roundrobin
+default-server:
+  check: "enabled"
+timeout-client: "30s"
+timeout-server: "30s"
+forwardfor:
+  enabled: "enabled"
+servers:
+  - name: example-server1
+    address: 10.0.0.1
+    port: 80
+    weight: 100
+  - name: example-server2
+    address: 10.0.0.2
+    port: 8080
+    weight: 200
+

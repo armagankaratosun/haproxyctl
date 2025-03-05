@@ -20,10 +20,37 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
-// sendRequest is a generic function to send API requests
+// TODO
+func ParseAPIResponse(data []byte, target interface{}) {
+	err := json.Unmarshal(data, target)
+	if err != nil {
+		log.Fatalf("Failed to parse API response: %v\nResponse: %s", err, string(data))
+	}
+}
+
+// GetConfigurationVersion retrieves the current HAProxy configuration version from the Data Plane API.
+func GetConfigurationVersion() (int, error) {
+	data, err := SendRequest("GET", "/services/haproxy/configuration/version", nil, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	versionStr := strings.TrimSpace(string(data))
+	versionInt, err := strconv.Atoi(versionStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse version as integer: %w", err)
+	}
+
+	return versionInt, nil
+}
+
+// SendRequest is a generic function to send API requests
 func SendRequest(method, endpoint string, queryParams map[string]string, body interface{}) ([]byte, error) {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -66,4 +93,34 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	}
 
 	return ioutil.ReadAll(resp.Body)
+}
+
+// GetResource retrieves a single resource (map[string]interface{}) from the API
+func GetResource(endpoint string) (map[string]interface{}, error) {
+	data, err := SendRequest("GET", endpoint, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource: %w", err)
+	}
+
+	var resource map[string]interface{}
+	if err := json.Unmarshal(data, &resource); err != nil {
+		return nil, fmt.Errorf("failed to parse resource response: %w", err)
+	}
+
+	return resource, nil
+}
+
+// GetResourceList retrieves a list of resources ([]map[string]interface{}) from the API
+func GetResourceList(endpoint string) ([]map[string]interface{}, error) {
+	data, err := SendRequest("GET", endpoint, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource list: %w", err)
+	}
+
+	var resourceList []map[string]interface{}
+	if err := json.Unmarshal(data, &resourceList); err != nil {
+		return nil, fmt.Errorf("failed to parse resource list response: %w", err)
+	}
+
+	return resourceList, nil
 }

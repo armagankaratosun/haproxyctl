@@ -17,38 +17,67 @@ package cmd
 
 import (
 	"fmt"
-	"haproxyctl/cmd/backends" // Import backends package
+	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/servers"
+	"log"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
-// createCmd represents the create command
+var createFile string
+
+// createCmd represents the top-level "create" command
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Create a resource in HAProxy",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if createFile != "" {
+			return createFromFile(createFile)
+		}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+		log.Fatal("Specify a resource type (backends, servers) and its name, or use '-f' to create from file.")
+		return nil
 	},
 }
 
-func init() {
-	createCmd.AddCommand(backends.CreateBackendsCmd)
+func createFromFile(filepath string) error {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to read file %s: %w", filepath, err)
+	}
 
+	// Extract kind and apiVersion to figure out what to do
+	var metadata struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+	}
+	if err := yaml.Unmarshal(data, &metadata); err != nil {
+		return fmt.Errorf("failed to parse YAML file: %w", err)
+	}
+
+	kind := strings.ToLower(metadata.Kind)
+
+	switch kind {
+	case "backend":
+		return backends.CreateBackendFromFile(data)
+	case "server":
+		return servers.CreateServerFromFile(data)
+	default:
+		return fmt.Errorf("unsupported resource kind: %s (supported: Backend, Server)", metadata.Kind)
+	}
+}
+
+func init() {
 	rootCmd.AddCommand(createCmd)
 
-	// Here you will define your flags and configuration settings.
+	// Add subcommands for explicit CLI resource creation (with positional args)
+	createCmd.AddCommand(backends.CreateBackendsCmd)
+	createCmd.AddCommand(servers.CreateServersCmd)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// Global flag for file-based creation (works for both backends and servers)
+	createCmd.Flags().StringVarP(&createFile, "file", "f", "", "Create resource from YAML file (supports kind: Backend and kind: Server)")
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// createCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

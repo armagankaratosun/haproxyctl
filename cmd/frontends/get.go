@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetFrontendsCmd represents "get frontends [frontend_name]"
+// GetFrontendsCmd represents "get frontends"
 var GetFrontendsCmd = &cobra.Command{
 	Use:   "frontends [frontend_name]",
 	Short: "Retrieve HAProxy frontends",
@@ -33,28 +33,31 @@ var GetFrontendsCmd = &cobra.Command{
 		if len(args) > 0 {
 			frontendName = args[0]
 		}
-		getFrontends(frontendName, cmd)
+		getFrontends(cmd, frontendName)
 	},
 }
 
-// getFrontends fetches either all HAProxy frontends or a specific frontend if a name is provided
-func getFrontends(frontendName string, cmd *cobra.Command) {
-	var endpoint string
-	if frontendName == "" {
-		endpoint = "/services/haproxy/configuration/frontends"
+func getFrontends(cmd *cobra.Command, frontendName string) {
+	var data interface{}
+	var err error
+
+	if frontendName != "" {
+		data, err = utils.GetResource(fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName))
 	} else {
-		endpoint = fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName)
+		data, err = utils.GetResourceList("/services/haproxy/configuration/frontends")
 	}
 
-	data, err := utils.SendRequest("GET", endpoint, nil, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to fetch frontend(s): %v", err)
 	}
 
-	outputFormat, _ := cmd.Flags().GetString("output")
+	outputFormat := utils.GetFlagString(cmd, "output")
 
-	// Use FormatOutput to pretty-print JSON or YAML
-	utils.FormatOutput(string(data), outputFormat)
+	if outputFormat == "" {
+		outputFormat = "table"
+	}
+
+	utils.FormatOutput(data, outputFormat)
 }
 
 func init() {

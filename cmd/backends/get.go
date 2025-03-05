@@ -16,10 +16,8 @@ limitations under the License.
 package backends
 
 import (
-	"fmt"
 	"haproxyctl/utils"
 	"log"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -27,33 +25,56 @@ import (
 // GetBackendsCmd represents "get backends"
 var GetBackendsCmd = &cobra.Command{
 	Use:   "backends [backend_name]",
-	Short: "Retrieve HAProxy backends",
-	Args:  cobra.MaximumNArgs(1), // Allow optional backend name
+	Short: "List HAProxy backends or fetch details of a specific backend",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var backendName string
 		if len(args) > 0 {
 			backendName = args[0]
 		}
-		getBackends(backendName, cmd)
+		getBackends(cmd, backendName)
 	},
 }
 
-// getBackends fetches either all HAProxy backends or a specific backend if a name is provided
-func getBackends(backendName string, cmd *cobra.Command) {
-	var endpoint string
+// getBackends handles fetching backends (list or single item)
+func getBackends(cmd *cobra.Command, backendName string) {
+	outputFormat := utils.GetFlagString(cmd, "output")
+
+	if outputFormat == "" {
+		outputFormat = "table" // Default to table if not specified
+	}
+
+	var data interface{}
+	var err error
+
 	if backendName == "" {
-		endpoint = "/services/haproxy/configuration/backends"
+		// Fetch all backends (list)
+		data, err = utils.GetResourceList("/services/haproxy/configuration/backends")
+		if err != nil {
+			log.Fatalf("Failed to fetch backends: %v", err)
+		}
+
+		// Enrich each backend with servers (applies only to tables, but harmless for yaml/json)
+		if backendList, ok := data.([]map[string]interface{}); ok {
+			for i := range backendList {
+				utils.EnrichBackendWithServers(backendList[i])
+			}
+		}
 	} else {
-		endpoint = fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName)
+		// Fetch a specific backend (single object)
+		data, err = utils.GetResource("/services/haproxy/configuration/backends/" + backendName)
+		if err != nil {
+			log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
+		}
+
+		if backend, ok := data.(map[string]interface{}); ok {
+			utils.EnrichBackendWithServers(backend)
+		}
 	}
 
-	data, err := utils.SendRequest("GET", endpoint, nil, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.FormatOutput(data, outputFormat)
+}
 
-	outputFormat, _ := cmd.Flags().GetString("output")
-
-	// Use FormatOutput globally
-	utils.FormatOutput(strings.TrimSpace(string(data)), outputFormat)
+func init() {
+	GetBackendsCmd.Flags().StringP("output", "o", "", "Output format: table, yaml, or json")
 }

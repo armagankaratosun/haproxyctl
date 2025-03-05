@@ -1,128 +1,134 @@
+/*
+Copyright © 2025 Armagan Karatosun
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package backends
 
 import (
-	"encoding/json"
 	"fmt"
+	"haproxyctl/cmd/servers"
+	"haproxyctl/utils"
+
 	"log"
 	"strconv"
-	"strings"
-
-	"haproxyctl/utils"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-// CreateBackendsCmd represents "create backend"
+// CreateBackendsCmd represents "create backends"
 var CreateBackendsCmd = &cobra.Command{
-	Use:   "backend <backend_name>",
+	Use:   "backends <backend_name>",
 	Short: "Create a new HAProxy backend",
-	Long: `Creates a new HAProxy backend with optional parameters.
+	Long: `Create a new HAProxy backend either from a YAML file or CLI flags.
 
 Examples:
-  haproxyctl create backend mybackend --mode http --balance roundrobin --maxconn 50
-  haproxyctl create backend another_backend --mode tcp --balance leastconn --check enabled`,
-	Args: cobra.ExactArgs(1), // Requires exactly one argument: backend name
+  haproxyctl create backends mybackend \
+    --mode http \
+    --balance algorithm=roundrobin \
+    --server name=s1,address=10.0.0.1,port=80,weight=100 \
+    --server name=s2,address=10.0.0.2,port=8080,weight=200
+  haproxyctl create backends mybackend -f mybackend.yaml
+`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		backendName := args[0]
-		createBackend(backendName, cmd)
+
+		var backendWithServers backendWithServers
+		backendWithServers.LoadFromFlags(cmd, backendName)
+
+		if err := backendWithServers.Validate(); err != nil {
+			log.Fatalf("Invalid backend configuration: %v", err)
+		}
+
+		outputFormat := utils.GetFlagString(cmd, "output")
+		dryRun := utils.GetFlagBool(cmd, "dry-run")
+
+		if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
+			log.Fatalf("Failed to create backend: %v", err)
+		}
 	},
 }
 
-// createBackend creates a new HAProxy backend with the provided name and options
-func createBackend(backendName string, cmd *cobra.Command) {
-	if backendName == "" {
-		log.Fatal("Backend name is required. Usage: haproxyctl create backend <backend_name> --mode <mode> --balance <algorithm> ...")
+// CreateBackendFromFile is used for "haproxyctl create -f file.yaml"
+func CreateBackendFromFile(data []byte) error {
+	var backendWithServers backendWithServers
+	if err := yaml.Unmarshal(data, &backendWithServers); err != nil {
+		return fmt.Errorf("failed to parse backend configuration file: %w", err)
 	}
 
-	// Get flag values
-	mode, _ := cmd.Flags().GetString("mode")
-	balance, _ := cmd.Flags().GetString("balance")
-	alpn, _ := cmd.Flags().GetString("alpn")
-	check, _ := cmd.Flags().GetString("check")
-	checkAlpn, _ := cmd.Flags().GetString("check-alpn")
-	maxconn, _ := cmd.Flags().GetInt("maxconn")
-	weight, _ := cmd.Flags().GetInt("weight")
-	outputFormat, _ := cmd.Flags().GetString("output") // -o yaml or -o json
-	dryRun, _ := cmd.Flags().GetBool("dry-run")        // --dry-run flag
-
-	// Prepare backend payload
-	backendData := map[string]interface{}{
-		"name": backendName,
-		"mode": mode,
-		"balance": map[string]string{
-			"algorithm": balance,
-		},
-		"default_server": map[string]interface{}{
-			"alpn":       alpn,
-			"check":      check,
-			"check_alpn": checkAlpn,
-			"maxconn":    maxconn,
-			"weight":     weight,
-		},
+	if err := backendWithServers.Validate(); err != nil {
+		return fmt.Errorf("invalid backend configuration: %w", err)
 	}
 
-	// Handle YAML or JSON output format
-	if outputFormat == "yaml" {
-		yamlOutput, err := yaml.Marshal(backendData)
-		if err != nil {
-			log.Fatal("Failed to generate YAML:", err)
+	return createBackend(backendWithServers, "", false)
+}
+
+// createBackend handles backend creation with validation
+func createBackend(backendWithServers backendWithServers, outputFormat string, dryRun bool) error {
+	if outputFormat != "" || dryRun {
+		utils.FormatOutput(backendWithServers, outputFormat)
+		if dryRun {
+			fmt.Println("Dry run mode enabled. No changes made.")
 		}
-		fmt.Println(string(yamlOutput))
-		return
-	} else if outputFormat == "json" {
-		jsonOutput, err := json.MarshalIndent(backendData, "", "    ")
-		if err != nil {
-			log.Fatal("Failed to generate JSON:", err)
-		}
-		fmt.Println(string(jsonOutput))
-		return
+		return nil
 	}
 
-	// If dry-run is enabled, print the payload and exit
-	if dryRun {
-		fmt.Println("Dry run mode enabled. No changes will be made.")
-		jsonOutput, err := json.MarshalIndent(backendData, "", "    ")
-		if err != nil {
-			log.Fatal("Failed to format JSON:", err)
-		}
-		fmt.Println(string(jsonOutput))
-		return
-	}
-
-	// Fetch HAProxy configuration version
-	data, err := utils.SendRequest("GET", "/services/haproxy/configuration/version", nil, nil)
+	version, err := utils.GetConfigurationVersion()
 	if err != nil {
-		log.Fatal("Failed to fetch HAProxy configuration version:", err)
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
 
-	versionStr := strings.TrimSpace(string(data)) // Trim newline and spaces
-	versionInt, err := strconv.Atoi(versionStr)
-	if err != nil {
-		log.Fatal("Failed to parse version as an integer:", err)
-	}
+	pureBackend := backendWithServers.ToBackendConfig()
 
-	// Send request to create backend
 	_, err = utils.SendRequest("POST", "/services/haproxy/configuration/backends",
-		map[string]string{"version": strconv.Itoa(versionInt)},
-		backendData,
+		map[string]string{"version": strconv.Itoa(version)},
+		pureBackend,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create backend '%s': %w", pureBackend.Name, err)
+	}
+	fmt.Printf("Backend '%s' created successfully.\n", pureBackend.Name)
+
+	// Create attached servers if any
+	for _, server := range backendWithServers.Servers {
+		server.Backend = pureBackend.Name // Set the backend name directly
+		if err := servers.CreateServer(server, outputFormat, dryRun); err != nil {
+			return fmt.Errorf("failed to create server '%s' for backend '%s': %w", server.Name, pureBackend.Name, err)
+		}
 	}
 
-	fmt.Printf("Backend '%s' created successfully.\n", backendName)
+	return nil
 }
 
 func init() {
-	// Register flags for backend creation
 	CreateBackendsCmd.Flags().String("mode", "http", "Backend mode (default: http)")
-	CreateBackendsCmd.Flags().String("balance", "roundrobin", "Load balancing algorithm (default: roundrobin)")
-	CreateBackendsCmd.Flags().String("alpn", "h2", "Application-Layer Protocol Negotiation (default: h2)")
-	CreateBackendsCmd.Flags().String("check", "enabled", "Enable or disable server health checks (default: enabled)")
-	CreateBackendsCmd.Flags().String("check-alpn", "h2", "Check ALPN protocol (default: h2)")
-	CreateBackendsCmd.Flags().Int("maxconn", 100, "Max connections per server (default: 100)")
-	CreateBackendsCmd.Flags().Int("weight", 100, "Server weight (default: 100)")
+	CreateBackendsCmd.Flags().StringToString("balance", map[string]string{"algorithm": "roundrobin"}, "Balance settings (key=value)")
+	CreateBackendsCmd.Flags().StringToString("default-server", nil, "Default server settings (key=value)")
+	CreateBackendsCmd.Flags().StringToString("forwardfor", nil, "ForwardFor settings (key=value)")
+
+	CreateBackendsCmd.Flags().String("timeout-client", "", "Client timeout (e.g., 30s)")
+	CreateBackendsCmd.Flags().String("timeout-queue", "", "Queue timeout (e.g., 30s)")
+	CreateBackendsCmd.Flags().String("timeout-server", "", "Server timeout (e.g., 30s)")
+
+	CreateBackendsCmd.Flags().Bool("redispatch", false, "Enable redispatch")
+
+	// Server flag supports multiple servers
+	CreateBackendsCmd.Flags().StringArray("server", nil, "Define server (name=s1,address=10.0.0.1,port=80,weight=100). Repeat for multiple servers.")
+
+	// Output and dry-run
 	CreateBackendsCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
-	CreateBackendsCmd.Flags().Bool("dry-run", false, "Simulate the request without making changes")
+	CreateBackendsCmd.Flags().Bool("dry-run", false, "Simulate creation without actually applying")
+
 }

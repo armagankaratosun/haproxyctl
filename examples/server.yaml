@@ -1,0 +1,9 @@
+apiVersion: haproxyctl/v1
+kind: Server
+name: example-server3
+address: 10.0.0.3
+port: 9090
+weight: 150
+backend: example-backend-with-servers
+ssl: false
+
