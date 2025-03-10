@@ -29,7 +29,7 @@ var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete resources in HAProxy",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Fatal("Specify a resource type (backend, server).")
+		log.Fatal("Specify a resource type (backends, servers).")
 	},
 }
 
