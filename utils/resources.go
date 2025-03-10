@@ -45,6 +45,14 @@ func NormalizeResource(resource string) (string, error) {
 	return "", errors.New("unknown resource type: " + resource)
 }
 
+// ExtractOptionalArg extracts the optional second argument (resource name), if provided
+func ExtractOptionalArg(args []string) string {
+	if len(args) > 1 {
+		return args[1]
+	}
+	return ""
+}
+
 // EnrichBackendWithServers fetches and attaches servers to a backend object as []interface{}
 func EnrichBackendWithServers(backend map[string]interface{}) {
 	backendName, ok := backend["name"].(string)

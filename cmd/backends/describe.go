@@ -58,3 +58,7 @@ func backendDescriptionSections() map[string][]string {
 		"default_server": {"alpn", "check", "check_alpn", "maxconn", "weight"},
 	}
 }
+
+func init() {
+	DescribeBackendsCmd.Flags().StringP("output", "o", "", "Output format: table, yaml, or json")
+}

@@ -1,49 +1,63 @@
-/*
-Copyright © 2025 Armagan Karatosun
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
-	"fmt"
+	"log"
+
 	"haproxyctl/cmd/acls"
 	"haproxyctl/cmd/backends"
 	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
+	"haproxyctl/utils"
 
 	"github.com/spf13/cobra"
 )
 
-// getCmd represents the get command
+// getCmd represents the "get" command
 var getCmd = &cobra.Command{
-	Use:   "get",
+	Use:   "get <resource> [name]",
 	Short: "Retrieve information from HAProxy",
-	Long: `Fetch details about HAProxy configuration, including backends, frontends, and ACLs.
-	
+	Long: `Fetch details about HAProxy configuration, including backends, frontends, servers, and ACLs.
+
 Examples:
   haproxyctl get configuration version -o json
-  haproxyctl get backends -o yaml
+  haproxyctl get backend mybackend -o yaml
   haproxyctl get frontends -o json
-  haproxyctl get acls myfrontend -o yaml`,
+  haproxyctl get acl myfrontend -o yaml`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("get called")
+		normalizedResource, err := utils.NormalizeResource(args[0])
+		if err != nil {
+			log.Fatalf("Unknown resource type: %s", args[0])
+		}
+
+		// Extract optional resource name argument
+		resourceName := utils.ExtractOptionalArg(args)
+
+		// Call the corresponding Cobra command directly
+		var subCmd *cobra.Command
+
+		switch normalizedResource {
+		case "backends":
+			subCmd = backends.GetBackendsCmd
+		case "frontends":
+			subCmd = frontends.GetFrontendsCmd
+		case "servers":
+			subCmd = servers.GetServersCmd
+		case "acls":
+			subCmd = acls.GetACLsCmd
+		case "configuration":
+			subCmd = configuration.GetConfigurationCmd
+		default:
+			log.Fatalf("Unsupported resource type: %s", normalizedResource)
+		}
+
+		// Execute the subcommand's Run function with the extracted arguments
+		subCmd.Run(cmd, append([]string{resourceName}, args[1:]...))
 	},
 }
 
 func init() {
-	// Register the get command under root
 	rootCmd.AddCommand(getCmd)
 
 	// Add subcommands
@@ -53,7 +67,5 @@ func init() {
 	getCmd.AddCommand(frontends.GetFrontendsCmd)
 	getCmd.AddCommand(servers.GetServersCmd)
 
-	// Add global output flag (all subcommands will inherit this)
 	getCmd.PersistentFlags().StringP("output", "o", "", "Output format: yaml or json (default: table)")
-
 }

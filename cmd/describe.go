@@ -35,7 +35,9 @@ var describeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(describeCmd)
-	createCmd.AddCommand(backends.DescribeBackendsCmd)
-	createCmd.AddCommand(servers.DescribeServersCmd)
+
+	// Add subcommands
+	describeCmd.AddCommand(backends.DescribeBackendsCmd)
+	describeCmd.AddCommand(servers.DescribeServersCmd)
 
 }

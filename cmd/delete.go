@@ -34,8 +34,10 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(createCmd)
-	createCmd.AddCommand(backends.DeleteBackendsCmd)
-	createCmd.AddCommand(servers.DeleteServersCmd)
+	rootCmd.AddCommand(deleteCmd)
+
+	// Add subcommands
+	deleteCmd.AddCommand(backends.DeleteBackendsCmd)
+	deleteCmd.AddCommand(servers.DeleteServersCmd)
 
 }
