@@ -34,25 +34,25 @@ var GetConfigurationCmd = &cobra.Command{
 // getConfigurationVersionCmd fetches the HAProxy configuration version
 var getConfigurationVersionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Fetch HAProxy configuration version",
+	Short: "Retrieves HAProxy configuration version in JSON format",
 	Long:  `Retrieves the current HAProxy configuration version.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		handleGetConfigurationVersion(cmd)
+		GetConfigurationVersion(cmd)
 	},
 }
 
 // getConfigurationRawCmd fetches the raw HAProxy configuration
 var getConfigurationRawCmd = &cobra.Command{
 	Use:   "raw",
-	Short: "Fetch raw HAProxy configuration",
+	Short: "Retrieves raw HAProxy configuration",
 	Long:  `Retrieves the full raw HAProxy configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		handleGetConfigurationRaw(cmd)
+		GetConfigurationRaw()
 	},
 }
 
-// handleGetConfigurationVersion fetches and displays the configuration version
-func handleGetConfigurationVersion(cmd *cobra.Command) {
+// GetConfigurationVersion fetches and displays the configuration version
+func GetConfigurationVersion(cmd *cobra.Command) {
 	outputFormat := utils.GetFlagString(cmd, "output")
 
 	version, err := utils.GetConfigurationVersion()
@@ -63,33 +63,26 @@ func handleGetConfigurationVersion(cmd *cobra.Command) {
 	// Build a structured object to support multiple output formats
 	versionData := map[string]int{"version": version}
 
+	// Default to JSON if no explicit format is set, I know this is an ugly hack
+	if outputFormat == "" {
+		outputFormat = "json"
+	}
+
 	utils.FormatOutput(versionData, outputFormat)
 }
 
-// handleGetConfigurationRaw fetches and displays the raw HAProxy configuration
-func handleGetConfigurationRaw(cmd *cobra.Command) {
-	data, err := utils.GetResource("/services/haproxy/configuration/raw")
+// GetConfigurationRaw fetches and displays the raw HAProxy configuration
+func GetConfigurationRaw() {
+	data, err := utils.SendRequest("GET", "/services/haproxy/configuration/raw", nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to fetch raw configuration: %v", err)
 	}
 
-	outputFormat := utils.GetFlagString(cmd, "output")
-
-	// For raw, "table" doesn't make sense — just default to plain string if output not set
-	if outputFormat == "" {
-		fmt.Println(data) // Print directly if no output format specified
-		return
-	}
-
-	utils.FormatOutput(data, outputFormat)
+	fmt.Println(string(data))
 }
 
 func init() {
 	// Attach subcommands
 	GetConfigurationCmd.AddCommand(getConfigurationVersionCmd)
 	GetConfigurationCmd.AddCommand(getConfigurationRawCmd)
-
-	// Add --output to both subcommands
-	getConfigurationVersionCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
-	getConfigurationRawCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
 }
