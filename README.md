@@ -45,7 +45,7 @@ Also, I’m still figuring out how I want to shape these APIs, so they **could m
 ### Build from Source
 
 ```sh
-git clone https://github.com/your-org-or-user/haproxyctl.git
+git clone https://github.com/armagankaratosun/haproxyctl.git
 cd haproxyctl
 go build -o haproxyctl
 ./haproxyctl --help
