@@ -25,20 +25,56 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "haproxyctl",
-	Short: "CLI tool for managing HAProxy",
-	Long: `haproxyctl is a command-line tool for managing HAProxy backends, servers, frontends, and configuration.
+	Short: "CLI tool for managing HAProxy through Data Plane API",
+	Long: `haproxyctl is a command-line tool for managing and creating HAProxy objects supported in the Data Plane API .
+
+Find more information at: https://www.haproxy.com/documentation/dataplaneapi/
+
+Basic Commands:
+  auth            Create HAProxy Data Plane API configuration file
+  get             Display one or more HAProxy resources (backends, servers, frontends)
+  create          Create a new HAProxy resource from a file or CLI flags
+  delete          Delete an existing HAProxy resource
+  describe        Show details of a specific HAProxy resource
+
+Resource-Specific Commands:
+  backends        Manage HAProxy backends
+  servers         Manage HAProxy servers within a backend
+  frontends       Manage HAProxy frontends
+  acls            Manage HAProxy ACLs
+
+Usage:
+  haproxyctl [command] [options]
 
 Examples:
+  # Retrieve all backends in YAML format
   haproxyctl get backends -o yaml
-  haproxyctl create backend mybackend --mode http
-  haproxyctl delete server mybackend myserver
+
+  # Create a backend with round-robin load balancing
+  haproxyctl create backend mybackend --mode http --balance algorithm=roundrobin
+
+  # Add a server to an existing backend
+  haproxyctl create server mybackend myserver --address 10.0.0.1 --port 80 --weight 100
+
+  # Describe a frontend with details
   haproxyctl describe frontend myfrontend
+
+  # Delete a server from a backend
+  haproxyctl delete server mybackend myserver
+
+  # Create resources from YAML manifests
   haproxyctl create -f backend.yaml
-  haproxyctl create -f server.yaml`,
+  haproxyctl create -f server.yaml
+
+Use "haproxyctl <command> --help" for more information about a given command.
+`,
+
 	Run: func(cmd *cobra.Command, args []string) {
-		// Show help if no subcommands are provided
+		// Stool for managing HAProxy backends, sehow help if no subcommands are provided
 		fmt.Println("No command specified. Showing help:")
-		cmd.Help()
+		if err := cmd.Help(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error displaying help: %v\n", err)
+		}
 	},
 }
 
