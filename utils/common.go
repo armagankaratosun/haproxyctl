@@ -26,6 +26,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
 )
 
@@ -117,7 +119,7 @@ func PrintResourceDescription(resourceType string, resource map[string]interface
 		if sectionName == "basic" {
 			continue
 		}
-		fmt.Printf("\n%s:\n", strings.Title(sectionName))
+		fmt.Printf("\n%s:\n", cases.Title(language.English).String(sectionName))
 		for _, field := range fields {
 			if value, ok := resource[field]; ok && value != "" {
 				fmt.Printf("- %s: %v\n", formatFieldName(field), value)
