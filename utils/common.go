@@ -212,7 +212,7 @@ func getSortedKeys(row map[string]interface{}) []string {
 
 // formatFieldName makes fields look prettier (timeout_client -> Timeout client)
 func formatFieldName(name string) string {
-	return strings.Title(strings.ReplaceAll(name, "_", " "))
+	return cases.Title(language.English).String(strings.ReplaceAll(name, "_", " "))
 }
 
 // formatValue ensures human-readable formatting for values
