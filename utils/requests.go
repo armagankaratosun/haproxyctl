@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -88,11 +88,11 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // GetResource retrieves a single resource (map[string]interface{}) from the API
