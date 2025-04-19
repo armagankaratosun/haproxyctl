@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/servers"
 	"log"
 	"os"
@@ -76,6 +77,7 @@ func init() {
 	// Add subcommands for explicit CLI resource creation (with positional args)
 	createCmd.AddCommand(backends.CreateBackendsCmd)
 	createCmd.AddCommand(servers.CreateServersCmd)
+	createCmd.AddCommand(configuration.CreateConfigurationCmd)
 
 	// Global flag for file-based creation (works for both backends and servers)
 	createCmd.Flags().StringVarP(&createFile, "file", "f", "", "Create resource from YAML file (supports kind: Backend and kind: Server)")

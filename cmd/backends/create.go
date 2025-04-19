@@ -39,8 +39,8 @@ Examples:
     --balance algorithm=roundrobin \
     --server name=s1,address=10.0.0.1,port=80,weight=100 \
     --server name=s2,address=10.0.0.2,port=8080,weight=200
-  haproxyctl create backends mybackend -f mybackend.yaml
-`,
+  haproxyctl create backends mybackend -f mybackend.yaml`,
+
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		backendName := args[0]

@@ -95,6 +95,44 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	return io.ReadAll(resp.Body)
 }
 
+// SendRawRequest sends a raw payload (e.g. entire HAProxy config) without JSON‑encoding.
+// contentType should be "text/plain" or "application/octet-stream".
+func SendRawRequest(method, endpoint string, queryParams map[string]string, rawBody []byte, contentType string) ([]byte, error) {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// Build URL + query string
+	url := cfg.APIBase + endpoint
+	if len(queryParams) > 0 {
+		q := "?"
+		for k, v := range queryParams {
+			q += fmt.Sprintf("%s=%s&", k, v)
+		}
+		url += strings.TrimSuffix(q, "&")
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewReader(rawBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.SetBasicAuth(cfg.User, cfg.Pass)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("raw request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(body))
+	}
+	return body, nil
+}
+
 // GetResource retrieves a single resource (map[string]interface{}) from the API
 func GetResource(endpoint string) (map[string]interface{}, error) {
 	data, err := SendRequest("GET", endpoint, nil, nil)
