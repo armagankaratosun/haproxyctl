@@ -1,0 +1,9 @@
+  # from manifest:
+  apiVersion: haproxyctl/v1
+  kind: Frontend
+  name: myfront2
+  mode: http
+  binds:
+    - address: 0.0.0.0
+      port: 80
+      ssl: false

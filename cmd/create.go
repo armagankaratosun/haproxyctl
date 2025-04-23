@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"haproxyctl/cmd/backends"
 	"haproxyctl/cmd/configuration"
+	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
 	"log"
 	"os"
@@ -77,6 +78,7 @@ func init() {
 	// Add subcommands for explicit CLI resource creation (with positional args)
 	createCmd.AddCommand(backends.CreateBackendsCmd)
 	createCmd.AddCommand(servers.CreateServersCmd)
+	createCmd.AddCommand(frontends.CreateFrontendsCmd)
 	createCmd.AddCommand(configuration.CreateConfigurationCmd)
 
 	// Global flag for file-based creation (works for both backends and servers)
