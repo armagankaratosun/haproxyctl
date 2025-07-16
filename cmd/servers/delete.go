@@ -26,8 +26,9 @@ import (
 
 // DeleteServersCmd represents "delete server"
 var DeleteServersCmd = &cobra.Command{
-	Use:   "server <backend_name> <server_name>",
-	Short: "Delete a specific HAProxy server from a backend",
+	Use:     "server <backend_name> <server_name>",
+	Aliases: []string{"servers"},
+	Short:   "Delete a specific HAProxy server from a backend",
 	Long: `This command deletes a server from a specific backend.
 
 Example:

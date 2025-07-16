@@ -25,8 +25,9 @@ import (
 
 // DescribeServersCmd represents "describe server"
 var DescribeServersCmd = &cobra.Command{
-	Use:   "server <backend_name> <server_name>",
-	Short: "Describe a specific HAProxy server in a backend",
+	Use:     "server <backend_name> <server_name>",
+	Aliases: []string{"servers"},
+	Short:   "Describe a specific HAProxy server in a backend",
 	Long: `Retrieve detailed information about a server inside a specific backend.
 
 Example:

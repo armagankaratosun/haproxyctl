@@ -27,8 +27,9 @@ import (
 
 // CreateServersCmd represents "create servers"
 var CreateServersCmd = &cobra.Command{
-	Use:   "servers <backend_name> <server_name>",
-	Short: "Create a server within a backend",
+	Use:     "servers <backend_name> <server_name>",
+	Aliases: []string{"server"},
+	Short:   "Create a server within a backend",
 	Long: `Create a new server inside a specific backend.
 
 Examples:

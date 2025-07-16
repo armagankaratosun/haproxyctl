@@ -25,9 +25,10 @@ import (
 
 // GetFrontendsCmd represents "get frontends"
 var GetFrontendsCmd = &cobra.Command{
-	Use:   "frontends [frontend_name]",
-	Short: "Retrieve HAProxy frontends",
-	Args:  cobra.MaximumNArgs(1), // Allows an optional frontend name
+	Use:     "frontends [frontend_name]",
+	Aliases: []string{"frontend"},
+	Short:   "Retrieve HAProxy frontends",
+	Args:    cobra.MaximumNArgs(1), // Allows an optional frontend name
 	Run: func(cmd *cobra.Command, args []string) {
 		var frontendName string
 		if len(args) > 0 {

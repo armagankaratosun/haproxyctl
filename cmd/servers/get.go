@@ -25,8 +25,9 @@ import (
 
 // GetServersCmd represents "get servers"
 var GetServersCmd = &cobra.Command{
-	Use:   "servers <backend_name> [server_name]",
-	Short: "List servers in a backend, or fetch details for a specific server",
+	Use:     "servers <backend_name> [server_name]",
+	Aliases: []string{"server"},
+	Short:   "List servers in a backend, or fetch details for a specific server",
 	Long: `Retrieve the list of servers in a backend, or details of a single server.
 
 Examples:

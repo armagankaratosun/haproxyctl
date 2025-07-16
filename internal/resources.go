@@ -20,30 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 )
-
-// ResourceAliases maps singular and plural forms to the canonical plural form
-var ResourceAliases = map[string]string{
-	"backend":       "backends",
-	"backends":      "backends",
-	"server":        "servers",
-	"servers":       "servers",
-	"frontend":      "frontends",
-	"frontends":     "frontends",
-	"acl":           "acls",
-	"acls":          "acls",
-	"configuration": "configuration", // No plural for configuration
-}
-
-// NormalizeResource converts singular to plural if needed, and validates the resource
-func NormalizeResource(resource string) (string, error) {
-	lower := strings.ToLower(resource)
-	if normalized, exists := ResourceAliases[lower]; exists {
-		return normalized, nil
-	}
-	return "", errors.New("unknown resource type: " + resource)
-}
 
 // ExtractOptionalArg extracts the optional second argument (resource name), if provided
 func ExtractOptionalArg(args []string) string {

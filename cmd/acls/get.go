@@ -25,9 +25,10 @@ import (
 
 // GetACLsCmd represents "get acls <frontend_name>"
 var GetACLsCmd = &cobra.Command{
-	Use:   "acls <frontend_name>",
-	Short: "Retrieve ACLs for a specific HAProxy frontend",
-	Args:  cobra.ExactArgs(1), // Requires exactly 1 argument: the frontend name
+	Use:     "acls <frontend_name>",
+	Aliases: []string{"acl"},
+	Short:   "Retrieve ACLs for a specific HAProxy frontend",
+	Args:    cobra.ExactArgs(1), // Requires exactly 1 argument: the frontend name
 	Run: func(cmd *cobra.Command, args []string) {
 		frontendName := args[0]
 		getACLs(frontendName, cmd)

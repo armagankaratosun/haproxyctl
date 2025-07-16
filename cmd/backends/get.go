@@ -24,9 +24,10 @@ import (
 
 // GetBackendsCmd represents "get backends"
 var GetBackendsCmd = &cobra.Command{
-	Use:   "backends [backend_name]",
-	Short: "List HAProxy backends or fetch details of a specific backend",
-	Args:  cobra.MaximumNArgs(1),
+	Use:     "backends [backend_name]",
+	Aliases: []string{"backend"},
+	Short:   "List HAProxy backends or fetch details of a specific backend",
+	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var backendName string
 		if len(args) > 0 {

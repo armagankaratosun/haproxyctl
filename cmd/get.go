@@ -1,14 +1,11 @@
 package cmd
 
 import (
-	"log"
-
 	"haproxyctl/cmd/acls"
 	"haproxyctl/cmd/backends"
 	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
-	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -24,38 +21,15 @@ Examples:
   haproxyctl get backend mybackend -o yaml
   haproxyctl get frontends -o json
   haproxyctl get acl myfrontend -o yaml`,
-	Args: cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		normalizedResource, err := internal.NormalizeResource(args[0])
-		if err != nil {
-			log.Fatalf("Unknown resource type: %s", args[0])
-		}
-
-		// Extract optional resource name argument
-		resourceName := internal.ExtractOptionalArg(args)
-
-		// Call the corresponding Cobra command directly
-		var subCmd *cobra.Command
-
-		switch normalizedResource {
-		case "backends":
-			subCmd = backends.GetBackendsCmd
-		case "frontends":
-			subCmd = frontends.GetFrontendsCmd
-		case "servers":
-			subCmd = servers.GetServersCmd
-		case "acls":
-			subCmd = acls.GetACLsCmd
-		case "configuration":
-			subCmd = configuration.GetConfigurationCmd
-		default:
-			log.Fatalf("Unsupported resource type: %s", normalizedResource)
-		}
-
-		// Execute the subcommand's Run function with the extracted arguments
-		subCmd.Run(cmd, append([]string{resourceName}, args[1:]...))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// If no subcommand was provided, show help
+		return cmd.Help()
 	},
 }
+
+// init initializes the get command and its subcommands
+// It adds the get command to the root command and sets up its subcommands.
+// It also sets up the persistent flags for output formatting.
 
 func init() {
 	rootCmd.AddCommand(getCmd)
