@@ -8,7 +8,7 @@ import (
 	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -26,13 +26,13 @@ Examples:
   haproxyctl get acl myfrontend -o yaml`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		normalizedResource, err := utils.NormalizeResource(args[0])
+		normalizedResource, err := internal.NormalizeResource(args[0])
 		if err != nil {
 			log.Fatalf("Unknown resource type: %s", args[0])
 		}
 
 		// Extract optional resource name argument
-		resourceName := utils.ExtractOptionalArg(args)
+		resourceName := internal.ExtractOptionalArg(args)
 
 		// Call the corresponding Cobra command directly
 		var subCmd *cobra.Command

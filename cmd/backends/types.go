@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"haproxyctl/cmd/servers"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -63,7 +63,7 @@ type backendWithServers struct {
 
 // LoadFromFile loads backend + servers from a YAML file.
 func (b *backendWithServers) LoadFromFile(filepath string) error {
-	data, err := utils.LoadYAMLFile(filepath)
+	data, err := internal.LoadYAMLFile(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to load backend configuration file: %w", err)
 	}
@@ -87,16 +87,16 @@ func (b *backendWithServers) LoadFromFlags(cmd *cobra.Command, backendName strin
 	b.APIVersion = "haproxyctl/v1"
 	b.Kind = "Backend"
 	b.Name = backendName
-	b.Mode = utils.GetFlagString(cmd, "mode")
-	b.Balance = utils.GetFlagMap(cmd, "balance")
-	b.DefaultServer = utils.GetFlagMapInterface(cmd, "default-server")
-	b.ForwardFor = utils.GetFlagMap(cmd, "forwardfor")
-	b.TimeoutClient = utils.GetFlagString(cmd, "timeout-client")
-	b.TimeoutQueue = utils.GetFlagString(cmd, "timeout-queue")
-	b.TimeoutServer = utils.GetFlagString(cmd, "timeout-server")
-	b.Redispatch = utils.GetFlagBool(cmd, "redispatch")
+	b.Mode = internal.GetFlagString(cmd, "mode")
+	b.Balance = internal.GetFlagMap(cmd, "balance")
+	b.DefaultServer = internal.GetFlagMapInterface(cmd, "default-server")
+	b.ForwardFor = internal.GetFlagMap(cmd, "forwardfor")
+	b.TimeoutClient = internal.GetFlagString(cmd, "timeout-client")
+	b.TimeoutQueue = internal.GetFlagString(cmd, "timeout-queue")
+	b.TimeoutServer = internal.GetFlagString(cmd, "timeout-server")
+	b.Redispatch = internal.GetFlagBool(cmd, "redispatch")
 
-	rawServers := utils.GetFlagStringSlice(cmd, "server")
+	rawServers := internal.GetFlagStringSlice(cmd, "server")
 	b.Servers = parseServersFromFlags(rawServers)
 }
 

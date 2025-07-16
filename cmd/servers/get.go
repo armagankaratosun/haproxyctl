@@ -17,7 +17,7 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -50,13 +50,13 @@ func getServers(cmd *cobra.Command, backendName, serverName string) {
 		endpoint += "/" + serverName
 	}
 
-	data, err := utils.SendRequest("GET", endpoint, nil, nil)
+	data, err := internal.SendRequest("GET", endpoint, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to fetch server(s) from backend '%s': %v", backendName, err)
 	}
 
-	outputFormat := utils.GetFlagString(cmd, "output")
-	utils.FormatOutput(string(data), outputFormat)
+	outputFormat := internal.GetFlagString(cmd, "output")
+	internal.FormatOutput(string(data), outputFormat)
 }
 
 func init() {

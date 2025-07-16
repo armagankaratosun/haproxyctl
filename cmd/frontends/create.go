@@ -22,7 +22,7 @@ import (
 	"log"
 	"strconv"
 
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -48,7 +48,7 @@ Examples:
 		var frontend frontendWithBinds
 
 		// 1) Load from file if requested
-		if fn := utils.GetFlagString(cmd, "file"); fn != "" {
+		if fn := internal.GetFlagString(cmd, "file"); fn != "" {
 			if err := frontend.LoadFromFile(fn); err != nil {
 				log.Fatalf("failed to load frontend from file: %v", err)
 			}
@@ -65,22 +65,22 @@ Examples:
 			log.Fatalf("invalid frontend configuration: %v", err)
 		}
 
-		outFmt := utils.GetFlagString(cmd, "output")
-		dryRun := utils.GetFlagBool(cmd, "dry-run")
+		outFmt := internal.GetFlagString(cmd, "output")
+		dryRun := internal.GetFlagBool(cmd, "dry-run")
 		if outFmt != "" || dryRun {
-			utils.FormatOutput(frontend, outFmt)
+			internal.FormatOutput(frontend, outFmt)
 			if dryRun {
 				fmt.Println("dry‑run mode enabled; no changes made.")
 			}
 			return
 		}
 
-		version, err := utils.GetConfigurationVersion()
+		version, err := internal.GetConfigurationVersion()
 		if err != nil {
 			log.Fatalf("failed to fetch HAProxy version: %v", err)
 		}
 		apiObj := frontend.ToFrontendConfig()
-		_, err = utils.SendRequest("POST",
+		_, err = internal.SendRequest("POST",
 			"/services/haproxy/configuration/frontends",
 			map[string]string{"version": strconv.Itoa(version)},
 			apiObj,
@@ -119,12 +119,12 @@ func init() {
 
 // createBind POSTS a single BindConfig to an existing frontend.
 func createBind(frontendName string, bind BindConfig) error {
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		return fmt.Errorf("fetch version: %w", err)
 	}
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/binds", frontendName)
-	_, err = utils.SendRequest("POST",
+	_, err = internal.SendRequest("POST",
 		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		bind,

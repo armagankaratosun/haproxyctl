@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -57,7 +57,7 @@ type frontendWithBinds struct {
 
 // LoadFromFile loads a YAML manifest into this struct.
 func (f *frontendWithBinds) LoadFromFile(path string) error {
-	data, err := utils.LoadYAMLFile(path)
+	data, err := internal.LoadYAMLFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read frontend file %q: %w", path, err)
 	}
@@ -70,17 +70,17 @@ func (f *frontendWithBinds) LoadFromFlags(cmd *cobra.Command, name string) {
 	f.Kind = "Frontend"
 	f.Name = name
 
-	f.Mode = utils.GetFlagString(cmd, "mode")
-	f.DefaultBackend = utils.GetFlagString(cmd, "default-backend")
-	f.ForwardFor = utils.GetFlagMap(cmd, "forwardfor")
-	f.TimeoutClient = utils.GetFlagString(cmd, "timeout-client")
-	f.TimeoutHttpRequest = utils.GetFlagString(cmd, "timeout-http-request")
-	f.TimeoutHttpKeepAlive = utils.GetFlagString(cmd, "timeout-http-keep-alive")
-	f.TimeoutQueue = utils.GetFlagString(cmd, "timeout-queue")
-	f.TimeoutServer = utils.GetFlagString(cmd, "timeout-server")
+	f.Mode = internal.GetFlagString(cmd, "mode")
+	f.DefaultBackend = internal.GetFlagString(cmd, "default-backend")
+	f.ForwardFor = internal.GetFlagMap(cmd, "forwardfor")
+	f.TimeoutClient = internal.GetFlagString(cmd, "timeout-client")
+	f.TimeoutHttpRequest = internal.GetFlagString(cmd, "timeout-http-request")
+	f.TimeoutHttpKeepAlive = internal.GetFlagString(cmd, "timeout-http-keep-alive")
+	f.TimeoutQueue = internal.GetFlagString(cmd, "timeout-queue")
+	f.TimeoutServer = internal.GetFlagString(cmd, "timeout-server")
 
 	// Parse repeated --bind flags into a slice of BindConfig
-	rawBinds := utils.GetFlagStringSlice(cmd, "bind")
+	rawBinds := internal.GetFlagStringSlice(cmd, "bind")
 	f.Binds = parseBindsFromFlags(rawBinds)
 }
 

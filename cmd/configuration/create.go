@@ -17,7 +17,7 @@ package configuration
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 	"os"
 	"strconv"
@@ -69,14 +69,14 @@ Examples:
 		}
 
 		// Fetch the current HAProxy config version
-		version, err := utils.GetConfigurationVersion()
+		version, err := internal.GetConfigurationVersion()
 		if err != nil {
 			log.Fatalf("failed to fetch HAProxy configuration version: %v", err)
 		}
 
 		// POST the raw config
 		endpoint := "/services/haproxy/configuration/raw"
-		if _, err := utils.SendRawRequest(
+		if _, err := internal.SendRawRequest(
 			"POST",
 			endpoint,
 			map[string]string{"version": strconv.Itoa(version)},

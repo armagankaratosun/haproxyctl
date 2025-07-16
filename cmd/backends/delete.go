@@ -17,7 +17,7 @@ package backends
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 	"strconv"
 
@@ -37,12 +37,12 @@ var DeleteBackendsCmd = &cobra.Command{
 
 // deleteBackend handles backend deletion
 func deleteBackend(backendName string) {
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
-	_, err = utils.SendRequest("DELETE",
+	_, err = internal.SendRequest("DELETE",
 		fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName),
 		map[string]string{"version": strconv.Itoa(version)},
 		nil,

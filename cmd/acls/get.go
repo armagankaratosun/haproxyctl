@@ -17,7 +17,7 @@ package acls
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ var GetACLsCmd = &cobra.Command{
 func getACLs(frontendName string, cmd *cobra.Command) {
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/acls", frontendName)
 
-	data, err := utils.SendRequest("GET", endpoint, nil, nil)
+	data, err := internal.SendRequest("GET", endpoint, nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func getACLs(frontendName string, cmd *cobra.Command) {
 	outputFormat, _ := cmd.Flags().GetString("output")
 
 	// Use FormatOutput to pretty-print JSON or YAML
-	utils.FormatOutput(string(data), outputFormat)
+	internal.FormatOutput(string(data), outputFormat)
 }
 
 func init() {

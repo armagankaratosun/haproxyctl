@@ -17,7 +17,7 @@ package frontends
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -42,22 +42,22 @@ func getFrontends(cmd *cobra.Command, frontendName string) {
 	var err error
 
 	if frontendName != "" {
-		data, err = utils.GetResource(fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName))
+		data, err = internal.GetResource(fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName))
 	} else {
-		data, err = utils.GetResourceList("/services/haproxy/configuration/frontends")
+		data, err = internal.GetResourceList("/services/haproxy/configuration/frontends")
 	}
 
 	if err != nil {
 		log.Fatalf("Failed to fetch frontend(s): %v", err)
 	}
 
-	outputFormat := utils.GetFlagString(cmd, "output")
+	outputFormat := internal.GetFlagString(cmd, "output")
 
 	if outputFormat == "" {
 		outputFormat = "table"
 	}
 
-	utils.FormatOutput(data, outputFormat)
+	internal.FormatOutput(data, outputFormat)
 }
 
 func init() {

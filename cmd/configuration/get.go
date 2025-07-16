@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -53,9 +53,9 @@ var getConfigurationRawCmd = &cobra.Command{
 
 // GetConfigurationVersion fetches and displays the configuration version
 func GetConfigurationVersion(cmd *cobra.Command) {
-	outputFormat := utils.GetFlagString(cmd, "output")
+	outputFormat := internal.GetFlagString(cmd, "output")
 
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
@@ -68,12 +68,12 @@ func GetConfigurationVersion(cmd *cobra.Command) {
 		outputFormat = "json"
 	}
 
-	utils.FormatOutput(versionData, outputFormat)
+	internal.FormatOutput(versionData, outputFormat)
 }
 
 // GetConfigurationRaw fetches and displays the raw HAProxy configuration
 func GetConfigurationRaw() {
-	data, err := utils.SendRequest("GET", "/services/haproxy/configuration/raw", nil, nil)
+	data, err := internal.SendRequest("GET", "/services/haproxy/configuration/raw", nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to fetch raw configuration: %v", err)
 	}

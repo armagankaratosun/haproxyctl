@@ -18,7 +18,7 @@ package backends
 import (
 	"fmt"
 	"haproxyctl/cmd/servers"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"log"
 	"strconv"
@@ -52,8 +52,8 @@ Examples:
 			log.Fatalf("Invalid backend configuration: %v", err)
 		}
 
-		outputFormat := utils.GetFlagString(cmd, "output")
-		dryRun := utils.GetFlagBool(cmd, "dry-run")
+		outputFormat := internal.GetFlagString(cmd, "output")
+		dryRun := internal.GetFlagBool(cmd, "dry-run")
 
 		if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
 			log.Fatalf("Failed to create backend: %v", err)
@@ -78,21 +78,21 @@ func CreateBackendFromFile(data []byte) error {
 // createBackend handles backend creation with validation
 func createBackend(backendWithServers backendWithServers, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
-		utils.FormatOutput(backendWithServers, outputFormat)
+		internal.FormatOutput(backendWithServers, outputFormat)
 		if dryRun {
 			fmt.Println("Dry run mode enabled. No changes made.")
 		}
 		return nil
 	}
 
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
 
 	pureBackend := backendWithServers.ToBackendConfig()
 
-	_, err = utils.SendRequest("POST", "/services/haproxy/configuration/backends",
+	_, err = internal.SendRequest("POST", "/services/haproxy/configuration/backends",
 		map[string]string{"version": strconv.Itoa(version)},
 		pureBackend,
 	)

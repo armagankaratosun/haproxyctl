@@ -17,7 +17,7 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -51,7 +51,7 @@ func (s *ServerConfig) NormalizeParent() error {
 
 // LoadFromFile loads a server configuration from a YAML file
 func (s *ServerConfig) LoadFromFile(filepath string) error {
-	data, err := utils.LoadYAMLFile(filepath)
+	data, err := internal.LoadYAMLFile(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to load server configuration file: %w", err)
 	}
@@ -63,10 +63,10 @@ func (s *ServerConfig) LoadFromFlags(cmd *cobra.Command, backendName, serverName
 	s.Name = serverName
 	s.Backend = backendName
 
-	s.Address = utils.GetFlagString(cmd, "address")
-	s.Port = utils.GetFlagInt(cmd, "port")
-	s.Weight = utils.GetFlagInt(cmd, "weight")
-	s.SSL = utils.GetFlagBool(cmd, "ssl")
+	s.Address = internal.GetFlagString(cmd, "address")
+	s.Port = internal.GetFlagInt(cmd, "port")
+	s.Weight = internal.GetFlagInt(cmd, "weight")
+	s.SSL = internal.GetFlagBool(cmd, "ssl")
 }
 
 // Validate performs basic validation on the ServerConfig

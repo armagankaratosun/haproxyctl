@@ -17,7 +17,7 @@ package backends
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -36,17 +36,17 @@ var DescribeBackendsCmd = &cobra.Command{
 
 // describeBackend fetches a backend and its servers, and prints a detailed description
 func describeBackend(backendName string) {
-	backend, err := utils.GetResource(fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName))
+	backend, err := internal.GetResource(fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName))
 	if err != nil {
 		log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
 	}
 
-	servers, err := utils.GetResourceList(fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers", backendName))
+	servers, err := internal.GetResourceList(fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers", backendName))
 	if err != nil {
 		log.Fatalf("Failed to fetch servers for backend '%s': %v", backendName, err)
 	}
 
-	utils.PrintResourceDescription("Backend", backend, backendDescriptionSections(), servers)
+	internal.PrintResourceDescription("Backend", backend, backendDescriptionSections(), servers)
 }
 
 // backendDescriptionSections defines the sections and fields to display in backend descriptions

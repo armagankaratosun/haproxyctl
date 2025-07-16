@@ -17,7 +17,7 @@ package frontends
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 	"strconv"
 
@@ -37,12 +37,12 @@ var DeleteFrontendsCmd = &cobra.Command{
 
 // deleteFrontend handles frontend deletion
 func deleteFrontend(frontendName string) {
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
-	_, err = utils.SendRequest("DELETE",
+	_, err = internal.SendRequest("DELETE",
 		fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName),
 		map[string]string{"version": strconv.Itoa(version)},
 		nil,

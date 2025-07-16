@@ -16,7 +16,7 @@ limitations under the License.
 package backends
 
 import (
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ var GetBackendsCmd = &cobra.Command{
 
 // getBackends handles fetching backends (list or single item)
 func getBackends(cmd *cobra.Command, backendName string) {
-	outputFormat := utils.GetFlagString(cmd, "output")
+	outputFormat := internal.GetFlagString(cmd, "output")
 
 	if outputFormat == "" {
 		outputFormat = "table" // Default to table if not specified
@@ -49,7 +49,7 @@ func getBackends(cmd *cobra.Command, backendName string) {
 
 	if backendName == "" {
 		// Fetch all backends (list)
-		data, err = utils.GetResourceList("/services/haproxy/configuration/backends")
+		data, err = internal.GetResourceList("/services/haproxy/configuration/backends")
 		if err != nil {
 			log.Fatalf("Failed to fetch backends: %v", err)
 		}
@@ -57,22 +57,22 @@ func getBackends(cmd *cobra.Command, backendName string) {
 		// Enrich each backend with servers (applies only to tables, but harmless for yaml/json)
 		if backendList, ok := data.([]map[string]interface{}); ok {
 			for i := range backendList {
-				utils.EnrichBackendWithServers(backendList[i])
+				internal.EnrichBackendWithServers(backendList[i])
 			}
 		}
 	} else {
 		// Fetch a specific backend (single object)
-		data, err = utils.GetResource("/services/haproxy/configuration/backends/" + backendName)
+		data, err = internal.GetResource("/services/haproxy/configuration/backends/" + backendName)
 		if err != nil {
 			log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
 		}
 
 		if backend, ok := data.(map[string]interface{}); ok {
-			utils.EnrichBackendWithServers(backend)
+			internal.EnrichBackendWithServers(backend)
 		}
 	}
 
-	utils.FormatOutput(data, outputFormat)
+	internal.FormatOutput(data, outputFormat)
 }
 
 func init() {

@@ -17,7 +17,7 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -43,12 +43,12 @@ Example:
 func describeServer(backendName, serverName string) {
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers/%s", backendName, serverName)
 
-	server, err := utils.GetResource(endpoint)
+	server, err := internal.GetResource(endpoint)
 	if err != nil {
 		log.Fatalf("Failed to fetch server '%s' in backend '%s': %v", serverName, backendName, err)
 	}
 
-	utils.PrintResourceDescription("Server", server, serverDescriptionSections(), nil)
+	internal.PrintResourceDescription("Server", server, serverDescriptionSections(), nil)
 }
 
 // serverDescriptionSections defines sections for server description output

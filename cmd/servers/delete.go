@@ -17,7 +17,7 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 	"strconv"
 
@@ -42,13 +42,13 @@ Example:
 
 // deleteServer handles deletion of a server from a backend
 func deleteServer(backendName, serverName string) {
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers/%s", backendName, serverName)
-	_, err = utils.SendRequest("DELETE", endpoint, map[string]string{"version": strconv.Itoa(version)}, nil)
+	_, err = internal.SendRequest("DELETE", endpoint, map[string]string{"version": strconv.Itoa(version)}, nil)
 	if err != nil {
 		log.Fatalf("Failed to delete server '%s' in backend '%s': %v", serverName, backendName, err)
 	}

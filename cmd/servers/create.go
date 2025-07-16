@@ -17,7 +17,7 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/utils"
+	"haproxyctl/internal"
 	"log"
 	"strconv"
 
@@ -48,8 +48,8 @@ Examples:
 			log.Fatalf("Invalid server configuration: %v", err)
 		}
 
-		outputFormat := utils.GetFlagString(cmd, "output")
-		dryRun := utils.GetFlagBool(cmd, "dry-run")
+		outputFormat := internal.GetFlagString(cmd, "output")
+		dryRun := internal.GetFlagBool(cmd, "dry-run")
 
 		if err := CreateServer(server, outputFormat, dryRun); err != nil {
 			log.Fatalf("Failed to create server: %v", err)
@@ -61,7 +61,7 @@ Examples:
 // Used by both `create servers` and `create backends --server=...`
 func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
-		utils.FormatOutput(server, outputFormat)
+		internal.FormatOutput(server, outputFormat)
 		if dryRun {
 			fmt.Println("Dry run mode enabled. No changes made.")
 		}
@@ -72,14 +72,14 @@ func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 		return fmt.Errorf("invalid server configuration: %w", err)
 	}
 
-	version, err := utils.GetConfigurationVersion()
+	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers", server.Parent)
 
-	_, err = utils.SendRequest("POST", endpoint,
+	_, err = internal.SendRequest("POST", endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		server,
 	)
