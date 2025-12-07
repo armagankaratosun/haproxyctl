@@ -25,13 +25,13 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "haproxyctl",
-	Short: "CLI tool for managing HAProxy through Data Plane API",
-	Long: `haproxyctl is a command-line tool for managing and creating HAProxy objects supported in the Data Plane API .
+	Short: "CLI tool for managing HAProxy through Data Plane API v3",
+	Long: `haproxyctl is a command-line tool for managing and creating HAProxy objects supported in the HAProxy Data Plane API v3.
 
 Find more information at: https://www.haproxy.com/documentation/dataplaneapi/
 
 Basic Commands:
-  auth            Create HAProxy Data Plane API configuration file
+  login           Create HAProxy Data Plane API configuration file
   get             Display one or more HAProxy resources (backends, servers, frontends)
   create          Create a new HAProxy resource from a file or CLI flags
   delete          Delete an existing HAProxy resource

@@ -17,6 +17,7 @@ package frontends
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -33,6 +34,27 @@ type BindConfig struct {
 	SSL     bool   `json:"ssl,omitempty" yaml:"ssl,omitempty"`
 }
 
+// bindPayload is the wire-format representation of a bind, using the
+// v3 enum for ssl instead of a boolean.
+type bindPayload struct {
+	Address string `json:"address"`
+	Port    int    `json:"port"`
+	SSL     string `json:"ssl,omitempty"`
+}
+
+// toPayload converts a BindConfig into the structure expected by
+// the HAProxy Data Plane API v3.
+func (b BindConfig) toPayload() bindPayload {
+	payload := bindPayload{
+		Address: b.Address,
+		Port:    b.Port,
+	}
+	if b.SSL {
+		payload.SSL = "enabled"
+	}
+	return payload
+}
+
 // frontendConfig is exactly what the HAProxy Data Plane API expects when creating/updating a frontend
 type frontendConfig struct {
 	Name                 string            `json:"name" yaml:"name"`
@@ -44,6 +66,17 @@ type frontendConfig struct {
 	TimeoutHttpKeepAlive string            `json:"timeout_http_keep_alive,omitempty" yaml:"timeout_http_keep_alive,omitempty"`
 	TimeoutQueue         string            `json:"timeout_queue,omitempty" yaml:"timeout_queue,omitempty"`
 	TimeoutServer        string            `json:"timeout_server,omitempty" yaml:"timeout_server,omitempty"`
+}
+
+// frontendPayload is the wire-format representation of a frontend,
+// with timeout fields normalized to integer milliseconds for v3.
+type frontendPayload struct {
+	frontendConfig
+	TimeoutClient        int `json:"timeout_client,omitempty"`
+	TimeoutHttpRequest   int `json:"timeout_http_request,omitempty"`
+	TimeoutHttpKeepAlive int `json:"timeout_http_keep_alive,omitempty"`
+	TimeoutQueue         int `json:"timeout_queue,omitempty"`
+	TimeoutServer        int `json:"timeout_server,omitempty"`
 }
 
 // frontendWithBinds is the user‑facing structure: includes metadata, core frontendConfig,
@@ -87,6 +120,46 @@ func (f *frontendWithBinds) LoadFromFlags(cmd *cobra.Command, name string) {
 // ToFrontendConfig strips out the binds metadata so you can POST the core API object.
 func (f *frontendWithBinds) ToFrontendConfig() frontendConfig {
 	return f.frontendConfig
+}
+
+// ToPayload converts the CLI/YAML view into the frontendPayload that
+// matches the Data Plane API v3 schema.
+func (f *frontendWithBinds) ToPayload() frontendPayload {
+	payload := frontendPayload{
+		frontendConfig: f.frontendConfig,
+	}
+
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutClient); err != nil {
+		log.Fatalf("invalid frontend timeout_client: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutClient = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutHttpRequest); err != nil {
+		log.Fatalf("invalid frontend timeout_http_request: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutHttpRequest = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutHttpKeepAlive); err != nil {
+		log.Fatalf("invalid frontend timeout_http_keep_alive: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutHttpKeepAlive = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutQueue); err != nil {
+		log.Fatalf("invalid frontend timeout_queue: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutQueue = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutServer); err != nil {
+		log.Fatalf("invalid frontend timeout_server: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutServer = ms
+	}
+
+	return payload
 }
 
 // Validate does minimal sanity checks before attempting creation.

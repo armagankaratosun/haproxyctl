@@ -23,11 +23,19 @@ import (
 	"path/filepath"
 )
 
-// Config struct for storing HAProxy API details
+// Config holds HAProxy Data Plane API connection details.
+// It mirrors what the `haproxyctl auth` command writes to
+// ~/.config/haproxyctl/config.json:
+//
+// {
+//   "api_base_url": "https://example:5555",
+//   "username": "admin",
+//   "password": "secret"
+// }
 type Config struct {
-	APIBase string `json:"api_base"`
-	User    string `json:"user"`
-	Pass    string `json:"pass"`
+	APIBaseURL string `json:"api_base_url"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
 }
 
 // Default config file path
@@ -35,10 +43,10 @@ var configFilePath string
 
 func init() {
 	usr, _ := user.Current()
-	configFilePath = filepath.Join(usr.HomeDir, ".config/haproxyctl/config")
+	configFilePath = filepath.Join(usr.HomeDir, ".config", "haproxyctl", "config.json")
 }
 
-// LoadConfig loads API configuration from ~/.config/haproxyctl/config
+// LoadConfig loads API configuration from ~/.config/haproxyctl/config.json
 func LoadConfig() (Config, error) {
 	var cfg Config
 	file, err := os.ReadFile(configFilePath)

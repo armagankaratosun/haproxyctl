@@ -79,20 +79,20 @@ Examples:
 		if err != nil {
 			log.Fatalf("failed to fetch HAProxy version: %v", err)
 		}
-		apiObj := frontend.ToFrontendConfig()
+		apiPayload := frontend.ToPayload()
 		_, err = internal.SendRequest("POST",
 			"/services/haproxy/configuration/frontends",
 			map[string]string{"version": strconv.Itoa(version)},
-			apiObj,
+			apiPayload,
 		)
 		if err != nil {
-			log.Fatalf("failed to create frontend %q: %v", apiObj.Name, err)
+			log.Fatalf("failed to create frontend %q: %v", frontend.Name, err)
 		}
-		fmt.Printf("frontend %q created\n", apiObj.Name)
+		fmt.Printf("frontend %q created\n", frontend.Name)
 
 		for _, b := range frontend.Binds {
-			if err := createBind(apiObj.Name, b); err != nil {
-				log.Fatalf("failed to add bind to %q: %v", apiObj.Name, err)
+			if err := createBind(frontend.Name, b); err != nil {
+				log.Fatalf("failed to add bind to %q: %v", frontend.Name, err)
 			}
 		}
 	},
@@ -127,7 +127,7 @@ func createBind(frontendName string, bind BindConfig) error {
 	_, err = internal.SendRequest("POST",
 		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
-		bind,
+		bind.toPayload(),
 	)
 	return err
 }

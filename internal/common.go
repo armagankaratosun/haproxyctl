@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -274,4 +275,25 @@ func formatNestedMap(nested map[string]interface{}) string {
 		}
 	}
 	return "{...}"
+}
+
+// ParseDurationToMillis normalizes user-friendly duration strings
+// (e.g. "30s", "500ms") or plain integers (already in ms) into a
+// millisecond value suitable for the Data Plane API v3 timeout fields.
+func ParseDurationToMillis(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, nil
+	}
+
+	// If it's a bare integer, assume it's already milliseconds.
+	if n, err := strconv.Atoi(s); err == nil {
+		return n, nil
+	}
+
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
+	}
+	return int(d / time.Millisecond), nil
 }

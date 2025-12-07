@@ -17,6 +17,7 @@ package backends
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -47,9 +48,37 @@ type backendConfig struct {
 	TimeoutQueue         string                   `json:"timeout_queue,omitempty" yaml:"timeout_queue,omitempty"`
 	TimeoutServer        string                   `json:"timeout_server,omitempty" yaml:"timeout_server,omitempty"`
 	TimeoutServerFin     string                   `json:"timeout_server_fin,omitempty" yaml:"timeout_server_fin,omitempty"`
-	TCPKA                bool                     `json:"tcpka,omitempty" yaml:"tcpka,omitempty"`
-	Redispatch           bool                     `json:"redispatch,omitempty" yaml:"redispatch,omitempty"`
+	// TCPKA and Redispatch are exposed as simple booleans in the CLI/YAML
+	// view, but the v3 Data Plane API expects different wire formats:
+	//   - tcpka: enum "enabled"/"disabled"
+	//   - redispatch: object { enabled: "enabled"/"disabled", interval: int }
+	// They are therefore excluded from JSON and translated in a dedicated
+	// payload struct before sending to the API.
+	TCPKA      bool              `yaml:"tcpka,omitempty" json:"-"`
+	Redispatch bool              `yaml:"redispatch,omitempty" json:"-"`
 	Source               map[string]string        `json:"source,omitempty" yaml:"source,omitempty"`
+}
+
+// redispatchPayload matches the HAProxy Data Plane API v3 definition
+// of the "redispatch" object.
+type redispatchPayload struct {
+	Enabled  string `json:"enabled"`
+	Interval int    `json:"interval,omitempty"`
+}
+
+// backendPayload is the wire-format representation of a backend,
+// embedding the base config while mapping tcpka/redispatch to their
+// v3 enum/object shapes.
+type backendPayload struct {
+	backendConfig
+	TimeoutClient        int                `json:"timeout_client,omitempty"`
+	TimeoutHttpKeepAlive int                `json:"timeout_http_keep_alive,omitempty"`
+	TimeoutHttpRequest   int                `json:"timeout_http_request,omitempty"`
+	TimeoutQueue         int                `json:"timeout_queue,omitempty"`
+	TimeoutServer        int                `json:"timeout_server,omitempty"`
+	TimeoutServerFin     int                `json:"timeout_server_fin,omitempty"`
+	TCPKA                string             `json:"tcpka,omitempty"`
+	Redispatch           *redispatchPayload `json:"redispatch,omitempty"`
 }
 
 // backendWithServers represents the user-facing object that includes servers
@@ -138,6 +167,64 @@ func parseServersFromFlags(rawServers []string) []servers.ServerConfig {
 // ToBackendConfig strips servers (API compatibility)
 func (b *backendWithServers) ToBackendConfig() backendConfig {
 	return b.backendConfig
+}
+
+// toPayload converts the CLI/YAML view into the backendPayload that
+// matches the Data Plane API v3 schema.
+func (b *backendWithServers) toPayload() backendPayload {
+	payload := backendPayload{
+		backendConfig: b.backendConfig,
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutClient); err != nil {
+		log.Fatalf("invalid backend timeout_client: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutClient = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutHttpKeepAlive); err != nil {
+		log.Fatalf("invalid backend timeout_http_keep_alive: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutHttpKeepAlive = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutHttpRequest); err != nil {
+		log.Fatalf("invalid backend timeout_http_request: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutHttpRequest = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutQueue); err != nil {
+		log.Fatalf("invalid backend timeout_queue: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutQueue = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutServer); err != nil {
+		log.Fatalf("invalid backend timeout_server: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutServer = ms
+	}
+
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutServerFin); err != nil {
+		log.Fatalf("invalid backend timeout_server_fin: %v", err)
+	} else if ms > 0 {
+		payload.TimeoutServerFin = ms
+	}
+
+	if b.TCPKA {
+		payload.TCPKA = "enabled"
+	}
+
+	if b.Redispatch {
+		payload.Redispatch = &redispatchPayload{
+			Enabled: "enabled",
+			// Interval is optional; we leave it zero-value unless
+			// we add a flag to configure it.
+		}
+	}
+
+	return payload
 }
 
 // Validate does basic validation for backendWithServers.

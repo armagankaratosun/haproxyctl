@@ -34,8 +34,35 @@ type ServerConfig struct {
 	Weight  int    `json:"weight,omitempty" yaml:"weight,omitempty"`
 	SSL     bool   `json:"ssl,omitempty" yaml:"ssl,omitempty"`
 
-	Backend string `json:"backend,omitempty" yaml:"backend,omitempty"`
-	Parent  string `json:"parent,omitempty" yaml:"parent,omitempty"`
+	// Backend/Parent are used client-side to determine the parent backend
+	// section (path parameter) but are not part of the v3 server object.
+	Backend string `yaml:"backend,omitempty"`
+	Parent  string `yaml:"parent,omitempty"`
+}
+
+// serverPayload is the subset of ServerConfig that is sent to the
+// HAProxy Data Plane API, with ssl encoded as the v3 enum.
+type serverPayload struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Port    int    `json:"port"`
+	Weight  int    `json:"weight,omitempty"`
+	SSL     string `json:"ssl,omitempty"`
+}
+
+// toPayload converts a ServerConfig into the wire-format structure
+// expected by the v3 Data Plane API.
+func (s ServerConfig) toPayload() serverPayload {
+	payload := serverPayload{
+		Name:    s.Name,
+		Address: s.Address,
+		Port:    s.Port,
+		Weight:  s.Weight,
+	}
+	if s.SSL {
+		payload.SSL = "enabled"
+	}
+	return payload
 }
 
 // NormalizeParent ensures compatibility between `parent` and `backend`
@@ -74,7 +101,7 @@ func (s *ServerConfig) Validate() error {
 	if s.Name == "" {
 		return fmt.Errorf("server name is required")
 	}
-	if s.Backend == "" {
+	if s.Parent == "" && s.Backend == "" {
 		return fmt.Errorf("backend (parent) is required")
 	}
 	if s.Address == "" {

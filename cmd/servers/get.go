@@ -16,6 +16,7 @@ limitations under the License.
 package servers
 
 import (
+	"encoding/json"
 	"fmt"
 	"haproxyctl/internal"
 	"log"
@@ -50,14 +51,31 @@ func getServers(cmd *cobra.Command, backendName, serverName string) {
 	if serverName != "" {
 		endpoint += "/" + serverName
 	}
-
 	data, err := internal.SendRequest("GET", endpoint, nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to fetch server(s) from backend '%s': %v", backendName, err)
 	}
 
 	outputFormat := internal.GetFlagString(cmd, "output")
-	internal.FormatOutput(string(data), outputFormat)
+
+	// Decode the JSON into a structured value so FormatOutput can
+	// render tables / yaml / json consistently.
+	var out interface{}
+	if serverName == "" {
+		var list []map[string]interface{}
+		if err := json.Unmarshal(data, &list); err != nil {
+			log.Fatalf("Failed to parse servers list response: %v\nResponse: %s", err, string(data))
+		}
+		out = list
+	} else {
+		var srv map[string]interface{}
+		if err := json.Unmarshal(data, &srv); err != nil {
+			log.Fatalf("Failed to parse server response: %v\nResponse: %s", err, string(data))
+		}
+		out = srv
+	}
+
+	internal.FormatOutput(out, outputFormat)
 }
 
 func init() {

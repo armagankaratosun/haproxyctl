@@ -17,7 +17,7 @@ Also, I’m still figuring out how I want to shape these APIs, so they **could m
 
 ## Features
 
-`haproxyctl` aims to provide a CLI for managing HAProxy resources using the [HAProxy Data Plane API](https://www.haproxy.com/documentation/dataplaneapi/community/).
+`haproxyctl` aims to provide a CLI for managing HAProxy resources using the [HAProxy Data Plane API v3](https://www.haproxy.com/documentation/dataplaneapi/community/).
 
 ### Current Commands
 
@@ -89,4 +89,3 @@ Apache License 2.0
 
 ## Special Thanks
 -  **ChatGPT** — *AI Sidekick, Tireless Rubber Duck, Suggestor of Both Useful and Questionable Code, and Writer of This Very Sentence.*
-

@@ -86,9 +86,10 @@ func GetFlagString(cmd *cobra.Command, name string) string {
 	return value
 }
 
-// GetFlagStringSlice fetches a string slice flag value (for repeated flags like --servers)
+// GetFlagStringSlice fetches a string slice/array flag value (for
+// repeated flags like --server/--bind).
 func GetFlagStringSlice(cmd *cobra.Command, name string) []string {
-	values, err := cmd.Flags().GetStringSlice(name)
+	values, err := cmd.Flags().GetStringArray(name)
 	if err != nil {
 		log.Fatalf("Failed to read flag %s: %v", name, err)
 	}

@@ -58,7 +58,8 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	}
 
 	// Build URL with query parameters
-	url := cfg.APIBase + endpoint
+	baseURL := normalizeAPIBaseURL(cfg.APIBaseURL)
+	url := baseURL + endpoint
 	if len(queryParams) > 0 {
 		url += "?"
 		for key, value := range queryParams {
@@ -78,7 +79,7 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 		return nil, fmt.Errorf("failed to create API request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(cfg.User, cfg.Pass)
+	req.SetBasicAuth(cfg.Username, cfg.Password)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -104,7 +105,8 @@ func SendRawRequest(method, endpoint string, queryParams map[string]string, rawB
 	}
 
 	// Build URL + query string
-	url := cfg.APIBase + endpoint
+	baseURL := normalizeAPIBaseURL(cfg.APIBaseURL)
+	url := baseURL + endpoint
 	if len(queryParams) > 0 {
 		q := "?"
 		for k, v := range queryParams {
@@ -118,7 +120,7 @@ func SendRawRequest(method, endpoint string, queryParams map[string]string, rawB
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.SetBasicAuth(cfg.User, cfg.Pass)
+	req.SetBasicAuth(cfg.Username, cfg.Password)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -131,6 +133,23 @@ func SendRawRequest(method, endpoint string, queryParams map[string]string, rawB
 		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(body))
 	}
 	return body, nil
+}
+
+// normalizeAPIBaseURL ensures the configured API base URL includes a version
+// prefix (we default to v3) and has no trailing slash. This lets users enter
+// either "http://host:5555" or "http://host:5555/v3" in `haproxyctl login`.
+func normalizeAPIBaseURL(raw string) string {
+	base := strings.TrimSpace(raw)
+	base = strings.TrimRight(base, "/")
+
+	if strings.HasSuffix(base, "/v1") ||
+		strings.HasSuffix(base, "/v2") ||
+		strings.HasSuffix(base, "/v3") {
+		return base
+	}
+
+	// Default to Data Plane API v3 when no explicit version is present.
+	return base + "/v3"
 }
 
 // GetResource retrieves a single resource (map[string]interface{}) from the API

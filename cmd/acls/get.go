@@ -16,6 +16,7 @@ limitations under the License.
 package acls
 
 import (
+	"encoding/json"
 	"fmt"
 	"haproxyctl/internal"
 	"log"
@@ -46,8 +47,13 @@ func getACLs(frontendName string, cmd *cobra.Command) {
 
 	outputFormat, _ := cmd.Flags().GetString("output")
 
+	var acls []map[string]interface{}
+	if err := json.Unmarshal(data, &acls); err != nil {
+		log.Fatalf("failed to parse ACL response: %v\nResponse: %s", err, string(data))
+	}
+
 	// Use FormatOutput to pretty-print JSON or YAML
-	internal.FormatOutput(string(data), outputFormat)
+	internal.FormatOutput(acls, outputFormat)
 }
 
 func init() {

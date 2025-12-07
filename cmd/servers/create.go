@@ -62,7 +62,15 @@ Examples:
 // Used by both `create servers` and `create backends --server=...`
 func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
-		internal.FormatOutput(server, outputFormat)
+		// For structured formats, preview the actual API payload
+		// (with ssl encoded as an enum). For the default case
+		// (no -o), render a YAML view of the richer ServerConfig.
+		if outputFormat == "" {
+			outputFormat = "yaml"
+			internal.FormatOutput(server, outputFormat)
+		} else {
+			internal.FormatOutput(server.toPayload(), outputFormat)
+		}
 		if dryRun {
 			fmt.Println("Dry run mode enabled. No changes made.")
 		}
@@ -82,7 +90,7 @@ func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 
 	_, err = internal.SendRequest("POST", endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
-		server,
+		server.toPayload(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create server '%s': %w", server.Name, err)

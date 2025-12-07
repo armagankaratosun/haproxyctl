@@ -52,11 +52,11 @@ Examples:
 			log.Fatalf("Invalid backend configuration: %v", err)
 		}
 
-		outputFormat := internal.GetFlagString(cmd, "output")
-		dryRun := internal.GetFlagBool(cmd, "dry-run")
+	outputFormat := internal.GetFlagString(cmd, "output")
+	dryRun := internal.GetFlagBool(cmd, "dry-run")
 
-		if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
-			log.Fatalf("Failed to create backend: %v", err)
+	if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
+		log.Fatalf("Failed to create backend: %v", err)
 		}
 	},
 }
@@ -78,7 +78,16 @@ func CreateBackendFromFile(data []byte) error {
 // createBackend handles backend creation with validation
 func createBackend(backendWithServers backendWithServers, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
-		internal.FormatOutput(backendWithServers, outputFormat)
+		// For structured formats, preview the actual API payload
+		// (timeouts in ms, tcpka/redispatch encoded). For the
+		// default case (no -o), render a YAML view of the richer
+		// backendWithServers structure.
+		if outputFormat == "" {
+			outputFormat = "yaml"
+			internal.FormatOutput(backendWithServers, outputFormat)
+		} else {
+			internal.FormatOutput(backendWithServers.toPayload(), outputFormat)
+		}
 		if dryRun {
 			fmt.Println("Dry run mode enabled. No changes made.")
 		}
@@ -90,22 +99,20 @@ func createBackend(backendWithServers backendWithServers, outputFormat string, d
 		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
 
-	pureBackend := backendWithServers.ToBackendConfig()
-
 	_, err = internal.SendRequest("POST", "/services/haproxy/configuration/backends",
 		map[string]string{"version": strconv.Itoa(version)},
-		pureBackend,
+		backendWithServers.toPayload(),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create backend '%s': %w", pureBackend.Name, err)
+		return fmt.Errorf("failed to create backend '%s': %w", backendWithServers.Name, err)
 	}
-	fmt.Printf("Backend '%s' created successfully.\n", pureBackend.Name)
+	fmt.Printf("Backend '%s' created successfully.\n", backendWithServers.Name)
 
 	// Create attached servers if any
 	for _, server := range backendWithServers.Servers {
-		server.Backend = pureBackend.Name // Set the backend name directly
+		server.Backend = backendWithServers.Name // Set the backend name directly
 		if err := servers.CreateServer(server, outputFormat, dryRun); err != nil {
-			return fmt.Errorf("failed to create server '%s' for backend '%s': %w", server.Name, pureBackend.Name, err)
+			return fmt.Errorf("failed to create server '%s' for backend '%s': %w", server.Name, backendWithServers.Name, err)
 		}
 	}
 
