@@ -13,25 +13,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package frontends provides commands to manage HAProxy frontends.
 package frontends
 
 import (
+	"errors"
 	"fmt"
+	"haproxyctl/internal"
 	"log"
 	"strconv"
 	"strings"
-
-	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-// BindConfig represents a single frontend bind (what the HAProxy Data Plane API expects)
+const sslEnabledValue = "enabled"
+
+// BindConfig represents a single frontend bind (what the HAProxy Data Plane API expects).
 type BindConfig struct {
 	Address string `json:"address" yaml:"address"`
 	Port    int    `json:"port"    yaml:"port"`
 	SSL     bool   `json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	// Name is the underlying bind name in the Data Plane API.
+	// It is not part of the manifest and is used only to drive
+	// update/delete operations when reconciling binds.
+	Name string `json:"-" yaml:"-"`
 }
 
 // bindPayload is the wire-format representation of a bind, using the
@@ -50,20 +58,20 @@ func (b BindConfig) toPayload() bindPayload {
 		Port:    b.Port,
 	}
 	if b.SSL {
-		payload.SSL = "enabled"
+		payload.SSL = sslEnabledValue
 	}
 	return payload
 }
 
-// frontendConfig is exactly what the HAProxy Data Plane API expects when creating/updating a frontend
+// frontendConfig is exactly what the HAProxy Data Plane API expects when creating/updating a frontend.
 type frontendConfig struct {
 	Name                 string            `json:"name" yaml:"name"`
 	Mode                 string            `json:"mode,omitempty" yaml:"mode,omitempty"`
 	DefaultBackend       string            `json:"default_backend,omitempty" yaml:"default_backend,omitempty"`
 	ForwardFor           map[string]string `json:"forwardfor,omitempty" yaml:"forwardfor,omitempty"`
 	TimeoutClient        string            `json:"timeout_client,omitempty" yaml:"timeout_client,omitempty"`
-	TimeoutHttpRequest   string            `json:"timeout_http_request,omitempty" yaml:"timeout_http_request,omitempty"`
-	TimeoutHttpKeepAlive string            `json:"timeout_http_keep_alive,omitempty" yaml:"timeout_http_keep_alive,omitempty"`
+	TimeoutHTTPRequest   string            `json:"timeout_http_request,omitempty" yaml:"timeout_http_request,omitempty"`
+	TimeoutHTTPKeepAlive string            `json:"timeout_http_keep_alive,omitempty" yaml:"timeout_http_keep_alive,omitempty"`
 	TimeoutQueue         string            `json:"timeout_queue,omitempty" yaml:"timeout_queue,omitempty"`
 	TimeoutServer        string            `json:"timeout_server,omitempty" yaml:"timeout_server,omitempty"`
 }
@@ -73,10 +81,43 @@ type frontendConfig struct {
 type frontendPayload struct {
 	frontendConfig
 	TimeoutClient        int `json:"timeout_client,omitempty"`
-	TimeoutHttpRequest   int `json:"timeout_http_request,omitempty"`
-	TimeoutHttpKeepAlive int `json:"timeout_http_keep_alive,omitempty"`
+	TimeoutHTTPRequest   int `json:"timeout_http_request,omitempty"`
+	TimeoutHTTPKeepAlive int `json:"timeout_http_keep_alive,omitempty"`
 	TimeoutQueue         int `json:"timeout_queue,omitempty"`
 	TimeoutServer        int `json:"timeout_server,omitempty"`
+}
+
+// populateFrontendConfigFromMap maps a generic API frontend object into
+// the strongly-typed frontendConfig used by manifests.
+func populateFrontendConfigFromMap(cfg *frontendConfig, obj map[string]interface{}) {
+	if v, ok := obj["name"].(string); ok {
+		cfg.Name = v
+	}
+	if v, ok := obj["mode"].(string); ok {
+		cfg.Mode = v
+	}
+	if v, ok := obj["default_backend"].(string); ok {
+		cfg.DefaultBackend = v
+	}
+	if m, ok := obj["forwardfor"].(map[string]interface{}); ok {
+		cfg.ForwardFor = toStringMap(m)
+	}
+
+	if ms, ok := getIntField(obj, "timeout_client"); ok {
+		cfg.TimeoutClient = internal.FormatMillisAsDuration(ms)
+	}
+	if ms, ok := getIntField(obj, "timeout_http_request"); ok {
+		cfg.TimeoutHTTPRequest = internal.FormatMillisAsDuration(ms)
+	}
+	if ms, ok := getIntField(obj, "timeout_http_keep_alive"); ok {
+		cfg.TimeoutHTTPKeepAlive = internal.FormatMillisAsDuration(ms)
+	}
+	if ms, ok := getIntField(obj, "timeout_queue"); ok {
+		cfg.TimeoutQueue = internal.FormatMillisAsDuration(ms)
+	}
+	if ms, ok := getIntField(obj, "timeout_server"); ok {
+		cfg.TimeoutServer = internal.FormatMillisAsDuration(ms)
+	}
 }
 
 // frontendWithBinds is the user‑facing structure: includes metadata, core frontendConfig,
@@ -107,8 +148,8 @@ func (f *frontendWithBinds) LoadFromFlags(cmd *cobra.Command, name string) {
 	f.DefaultBackend = internal.GetFlagString(cmd, "default-backend")
 	f.ForwardFor = internal.GetFlagMap(cmd, "forwardfor")
 	f.TimeoutClient = internal.GetFlagString(cmd, "timeout-client")
-	f.TimeoutHttpRequest = internal.GetFlagString(cmd, "timeout-http-request")
-	f.TimeoutHttpKeepAlive = internal.GetFlagString(cmd, "timeout-http-keep-alive")
+	f.TimeoutHTTPRequest = internal.GetFlagString(cmd, "timeout-http-request")
+	f.TimeoutHTTPKeepAlive = internal.GetFlagString(cmd, "timeout-http-keep-alive")
 	f.TimeoutQueue = internal.GetFlagString(cmd, "timeout-queue")
 	f.TimeoutServer = internal.GetFlagString(cmd, "timeout-server")
 
@@ -135,16 +176,16 @@ func (f *frontendWithBinds) ToPayload() frontendPayload {
 		payload.TimeoutClient = ms
 	}
 
-	if ms, err := internal.ParseDurationToMillis(f.TimeoutHttpRequest); err != nil {
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutHTTPRequest); err != nil {
 		log.Fatalf("invalid frontend timeout_http_request: %v", err)
 	} else if ms > 0 {
-		payload.TimeoutHttpRequest = ms
+		payload.TimeoutHTTPRequest = ms
 	}
 
-	if ms, err := internal.ParseDurationToMillis(f.TimeoutHttpKeepAlive); err != nil {
+	if ms, err := internal.ParseDurationToMillis(f.TimeoutHTTPKeepAlive); err != nil {
 		log.Fatalf("invalid frontend timeout_http_keep_alive: %v", err)
 	} else if ms > 0 {
-		payload.TimeoutHttpKeepAlive = ms
+		payload.TimeoutHTTPKeepAlive = ms
 	}
 
 	if ms, err := internal.ParseDurationToMillis(f.TimeoutQueue); err != nil {
@@ -165,7 +206,7 @@ func (f *frontendWithBinds) ToPayload() frontendPayload {
 // Validate does minimal sanity checks before attempting creation.
 func (f *frontendWithBinds) Validate() error {
 	if f.Name == "" {
-		return fmt.Errorf("frontend name is required")
+		return errors.New("frontend name is required")
 	}
 	if f.Mode != "http" && f.Mode != "tcp" {
 		return fmt.Errorf("invalid mode %q (allowed: http, tcp)", f.Mode)
@@ -208,4 +249,38 @@ func parseBindsFromFlags(flags []string) []BindConfig {
 		}
 	}
 	return out
+}
+
+// toStringMap converts a map[string]interface{} to map[string]string.
+func toStringMap(m map[string]interface{}) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		switch val := v.(type) {
+		case string:
+			out[k] = val
+		default:
+			out[k] = fmt.Sprintf("%v", val)
+		}
+	}
+	return out
+}
+
+// getIntField extracts an integer field from a generic map where
+// numbers are typically float64 from JSON decoding.
+func getIntField(obj map[string]interface{}, key string) (int, bool) {
+	v, ok := obj[key]
+	if !ok || v == nil {
+		return 0, false
+	}
+
+	switch n := v.(type) {
+	case int:
+		return n, true
+	case int64:
+		return int(n), true
+	case float64:
+		return int(n), true
+	default:
+		return 0, false
+	}
 }

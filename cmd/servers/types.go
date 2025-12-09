@@ -1,3 +1,4 @@
+// Package servers provides commands to manage HAProxy servers.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -16,6 +17,7 @@ limitations under the License.
 package servers
 
 import (
+	"errors"
 	"fmt"
 	"haproxyctl/internal"
 
@@ -23,7 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ServerConfig represents the full server object in HAProxy Data Plane API
+// ServerConfig represents the full server object in HAProxy Data Plane API.
 type ServerConfig struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
@@ -65,18 +67,18 @@ func (s ServerConfig) toPayload() serverPayload {
 	return payload
 }
 
-// NormalizeParent ensures compatibility between `parent` and `backend`
+// NormalizeParent ensures compatibility between `parent` and `backend`.
 func (s *ServerConfig) NormalizeParent() error {
 	if s.Parent == "" && s.Backend != "" {
 		s.Parent = s.Backend
 	}
 	if s.Parent == "" {
-		return fmt.Errorf("server must specify parent (backend)")
+		return errors.New("server must specify parent (backend)")
 	}
 	return nil
 }
 
-// LoadFromFile loads a server configuration from a YAML file
+// LoadFromFile loads a server configuration from a YAML file.
 func (s *ServerConfig) LoadFromFile(filepath string) error {
 	data, err := internal.LoadYAMLFile(filepath)
 	if err != nil {
@@ -85,7 +87,7 @@ func (s *ServerConfig) LoadFromFile(filepath string) error {
 	return yaml.Unmarshal(data, s)
 }
 
-// LoadFromFlags loads server data from CLI flags
+// LoadFromFlags loads server data from CLI flags.
 func (s *ServerConfig) LoadFromFlags(cmd *cobra.Command, backendName, serverName string) {
 	s.Name = serverName
 	s.Backend = backendName
@@ -96,19 +98,19 @@ func (s *ServerConfig) LoadFromFlags(cmd *cobra.Command, backendName, serverName
 	s.SSL = internal.GetFlagBool(cmd, "ssl")
 }
 
-// Validate performs basic validation on the ServerConfig
+// Validate performs basic validation on the ServerConfig.
 func (s *ServerConfig) Validate() error {
 	if s.Name == "" {
-		return fmt.Errorf("server name is required")
+		return errors.New("server name is required")
 	}
 	if s.Parent == "" && s.Backend == "" {
-		return fmt.Errorf("backend (parent) is required")
+		return errors.New("backend (parent) is required")
 	}
 	if s.Address == "" {
-		return fmt.Errorf("server address is required")
+		return errors.New("server address is required")
 	}
 	if s.Port == 0 {
-		return fmt.Errorf("server port is required")
+		return errors.New("server port is required")
 	}
 	return nil
 }

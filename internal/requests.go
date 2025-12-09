@@ -1,3 +1,4 @@
+// Package internal contains shared helpers for haproxyctl.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -17,16 +18,18 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
 
-// TODO
+// ParseAPIResponse unmarshals raw API response bytes into the provided target.
 func ParseAPIResponse(data []byte, target interface{}) {
 	err := json.Unmarshal(data, target)
 	if err != nil {
@@ -50,8 +53,15 @@ func GetConfigurationVersion() (int, error) {
 	return versionInt, nil
 }
 
-// SendRequest is a generic function to send API requests
+// SendRequest is a generic function to send API requests.
 func SendRequest(method, endpoint string, queryParams map[string]string, body interface{}) ([]byte, error) {
+	return SendRequestWithContext(context.Background(), method, endpoint, queryParams, body)
+}
+
+// SendRequestWithContext sends an API request using the provided context.
+// Most callers should prefer this so that requests can be cancelled when
+// the associated CLI command is cancelled.
+func SendRequestWithContext(ctx context.Context, method, endpoint string, queryParams map[string]string, body interface{}) ([]byte, error) {
 	cfg, err := LoadConfig()
 	if err != nil {
 		return nil, err
@@ -71,10 +81,14 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	// Convert body to JSON if needed
 	var reqBody []byte
 	if body != nil {
-		reqBody, _ = json.Marshal(body)
+		var err error
+		reqBody, err = json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API request: %w", err)
 	}
@@ -86,10 +100,17 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+		}
+	}()
 
 	if resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("HAProxy API error (%d) and failed to read error body: %w", resp.StatusCode, readErr)
+		}
 		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
@@ -99,6 +120,11 @@ func SendRequest(method, endpoint string, queryParams map[string]string, body in
 // SendRawRequest sends a raw payload (e.g. entire HAProxy config) without JSON‑encoding.
 // contentType should be "text/plain" or "application/octet-stream".
 func SendRawRequest(method, endpoint string, queryParams map[string]string, rawBody []byte, contentType string) ([]byte, error) {
+	return SendRawRequestWithContext(context.Background(), method, endpoint, queryParams, rawBody, contentType)
+}
+
+// SendRawRequestWithContext is the context-aware form of SendRawRequest.
+func SendRawRequestWithContext(ctx context.Context, method, endpoint string, queryParams map[string]string, rawBody []byte, contentType string) ([]byte, error) {
 	cfg, err := LoadConfig()
 	if err != nil {
 		return nil, err
@@ -115,7 +141,7 @@ func SendRawRequest(method, endpoint string, queryParams map[string]string, rawB
 		url += strings.TrimSuffix(q, "&")
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewReader(rawBody))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(rawBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -126,9 +152,16 @@ func SendRawRequest(method, endpoint string, queryParams map[string]string, rawB
 	if err != nil {
 		return nil, fmt.Errorf("raw request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+		}
+	}()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read raw response body: %w", err)
+	}
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(body))
 	}
@@ -152,7 +185,7 @@ func normalizeAPIBaseURL(raw string) string {
 	return base + "/v3"
 }
 
-// GetResource retrieves a single resource (map[string]interface{}) from the API
+// GetResource retrieves a single resource (map[string]interface{}) from the API.
 func GetResource(endpoint string) (map[string]interface{}, error) {
 	data, err := SendRequest("GET", endpoint, nil, nil)
 	if err != nil {
@@ -167,7 +200,7 @@ func GetResource(endpoint string) (map[string]interface{}, error) {
 	return resource, nil
 }
 
-// GetResourceList retrieves a list of resources ([]map[string]interface{}) from the API
+// GetResourceList retrieves a list of resources ([]map[string]interface{}) from the API.
 func GetResourceList(endpoint string) ([]map[string]interface{}, error) {
 	data, err := SendRequest("GET", endpoint, nil, nil)
 	if err != nil {

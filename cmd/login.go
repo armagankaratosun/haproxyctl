@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,11 +36,11 @@ This command will prompt you for the following values:
 api_base_url, username and password via interactive prompts.  
 These values get written to:
   $HOME/.config/haproxyctl/config.json`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// validator that disallows empty strings
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		// validator that disallows empty strings.
 		validateNonEmpty := func(input string) error {
 			if strings.TrimSpace(input) == "" {
-				return fmt.Errorf("value cannot be empty")
+				return errors.New("value cannot be empty")
 			}
 			return nil
 		}
@@ -50,7 +51,7 @@ These values get written to:
 			Default:  viper.GetString("api_base_url"),
 			Validate: validateNonEmpty,
 		}
-		api_base_url, err := apiPrompt.Run()
+		apiBaseURL, err := apiPrompt.Run()
 		if err != nil {
 			return fmt.Errorf("prompt failed for api base url: %w", err)
 		}
@@ -102,7 +103,7 @@ These values get written to:
 		// e.g., viper.SetDefault("api_base_url", "https://api.example.com")
 		//       viper.SetDefault("username", "admin")
 		//       viper.SetDefault("password", "password")
-		viper.Set("api_base_url", api_base_url)
+		viper.Set("api_base_url", apiBaseURL)
 		viper.Set("username", username)
 		viper.Set("password", password)
 		// 3.4) Overwrite the config file
@@ -112,7 +113,7 @@ These values get written to:
 			return fmt.Errorf("failed to write config: %w", err)
 		}
 		// 4) Print the configuration
-		fmt.Printf("Configuration saved to %s\n", configFile)
+		cmd.Printf("Configuration saved to %s\n", configFile)
 
 		return nil
 

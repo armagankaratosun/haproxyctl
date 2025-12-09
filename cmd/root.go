@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package cmd wires top-level CLI commands for haproxyctl.
 package cmd
 
 import (
@@ -22,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "haproxyctl",
 	Short: "CLI tool for managing HAProxy through Data Plane API v3",
@@ -69,16 +71,16 @@ Examples:
 Use "haproxyctl <command> --help" for more information about a given command.
 `,
 
-	Run: func(cmd *cobra.Command, args []string) {
-		// Stool for managing HAProxy backends, sehow help if no subcommands are provided
-		fmt.Println("No command specified. Showing help:")
+	Run: func(cmd *cobra.Command, _ []string) {
+		// Tool for managing HAProxy backends, show help if no subcommands are provided.
+		cmd.Println("No command specified. Showing help:")
 		if err := cmd.Help(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error displaying help: %v\n", err)
 		}
 	},
 }
 
-// Execute runs the root command and dispatches subcommands
+// Execute runs the root command and dispatches subcommands.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -86,7 +88,7 @@ func Execute() {
 }
 
 func init() {
-	// Define global flags (if needed in the future)
+	// Define global flags (if needed in the future).
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.haproxyctl.yaml)")
 
 	// Ensure rootCmd shows help when run without arguments

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package acls provides commands to manage HAProxy ACLs via the Data Plane API.
 package acls
 
 import (
@@ -24,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetACLsCmd represents "get acls <frontend_name>"
+// GetACLsCmd represents "get acls <frontend_name>".
 var GetACLsCmd = &cobra.Command{
 	Use:     "acls <frontend_name>",
 	Aliases: []string{"acl"},
@@ -36,11 +38,11 @@ var GetACLsCmd = &cobra.Command{
 	},
 }
 
-// getACLs fetches the list of ACLs for a specific HAProxy frontend
+// getACLs fetches the list of ACLs for a specific HAProxy frontend.
 func getACLs(frontendName string, cmd *cobra.Command) {
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/acls", frontendName)
 
-	data, err := internal.SendRequest("GET", endpoint, nil, nil)
+	data, err := internal.SendRequestWithContext(cmd.Context(), "GET", endpoint, nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

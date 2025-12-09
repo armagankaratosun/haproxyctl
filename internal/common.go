@@ -32,7 +32,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// LoadYAMLFile reads the content of a YAML file
+// OutputFormatYAML is the canonical YAML output format string.
+const OutputFormatYAML = "yaml"
+
+// LoadYAMLFile reads the content of a YAML file.
 func LoadYAMLFile(filepath string) ([]byte, error) {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
@@ -41,18 +44,18 @@ func LoadYAMLFile(filepath string) ([]byte, error) {
 	return data, nil
 }
 
+// FormatOutput prints structured data according to the requested output format.
 func FormatOutput(data interface{}, outputFormat string) {
-	// Normalize `[]map[string]interface{}` to `[]interface{}`
-	switch v := data.(type) {
-	case []map[string]interface{}:
-		var genericList []interface{}
+	// Normalize `[]map[string]interface{}` to `[]interface{}`.
+	if v, ok := data.([]map[string]interface{}); ok {
+		genericList := make([]interface{}, 0, len(v))
 		for _, item := range v {
 			genericList = append(genericList, item)
 		}
 		data = genericList
 	}
 
-	// Handle default format
+	// Handle default format.
 	if outputFormat == "table" || outputFormat == "" {
 		switch v := data.(type) {
 		case map[string]interface{}:
@@ -66,28 +69,32 @@ func FormatOutput(data interface{}, outputFormat string) {
 		}
 	}
 
-	// YAML and JSON (explicitly requested)
+	// YAML and JSON (explicitly requested).
 	switch outputFormat {
-	case "yaml":
+	case OutputFormatYAML:
 		yamlOutput, err := yaml.Marshal(data)
 		if err != nil {
 			log.Fatalf("Failed to generate YAML: %v", err)
 		}
-		fmt.Println(string(yamlOutput))
+		if _, err := fmt.Fprintln(os.Stdout, string(yamlOutput)); err != nil {
+			log.Printf("warning: failed to write YAML output: %v", err)
+		}
 
 	case "json":
 		jsonOutput, err := json.MarshalIndent(data, "", "    ")
 		if err != nil {
 			log.Fatalf("Failed to generate JSON: %v", err)
 		}
-		fmt.Println(string(jsonOutput))
+		if _, err := fmt.Fprintln(os.Stdout, string(jsonOutput)); err != nil {
+			log.Printf("warning: failed to write JSON output: %v", err)
+		}
 
 	default:
 		log.Fatalf("Invalid output format: %s. Supported formats: yaml, json, table", outputFormat)
 	}
 }
 
-// ConvertMapToTyped converts string map into map[string]interface{}
+// ConvertMapToTyped converts string map into map[string]interface{}.
 func ConvertMapToTyped(input map[string]string, intFields []string) map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, v := range input {
@@ -104,14 +111,29 @@ func ConvertMapToTyped(input map[string]string, intFields []string) map[string]i
 	return result
 }
 
-// PrintResourceDescription prints structured details for a resource (backend, frontend, etc.)
+// SortByStringField sorts a slice of map[string]interface{} in place by the
+// given string field. Missing or non-string fields are treated as empty
+// strings, so they appear first but deterministically.
+func SortByStringField(list []map[string]interface{}, field string) {
+	sort.Slice(list, func(i, j int) bool {
+		nameI, _ := list[i][field].(string)
+		nameJ, _ := list[j][field].(string)
+		return nameI < nameJ
+	})
+}
+
+// PrintResourceDescription prints structured details for a resource (backend, frontend, etc.).
 func PrintResourceDescription(resourceType string, resource map[string]interface{}, sections map[string][]string, servers []map[string]interface{}) {
-	fmt.Printf("%s: %s\n", resourceType, resource["name"])
+	if _, err := fmt.Fprintf(os.Stdout, "%s: %s\n", resourceType, resource["name"]); err != nil {
+		log.Printf("warning: failed to write resource header: %v", err)
+	}
 
 	if basics, exists := sections["basic"]; exists {
 		for _, field := range basics {
 			if value, ok := resource[field]; ok && value != "" {
-				fmt.Printf("%s: %v\n", formatFieldName(field), value)
+				if _, err := fmt.Fprintf(os.Stdout, "%s: %v\n", formatFieldName(field), value); err != nil {
+					log.Printf("warning: failed to write basic field: %v", err)
+				}
 			}
 		}
 	}
@@ -120,41 +142,59 @@ func PrintResourceDescription(resourceType string, resource map[string]interface
 		if sectionName == "basic" {
 			continue
 		}
-		fmt.Printf("\n%s:\n", cases.Title(language.English).String(sectionName))
+		if _, err := fmt.Fprintf(os.Stdout, "\n%s:\n", cases.Title(language.English).String(sectionName)); err != nil {
+			log.Printf("warning: failed to write section header: %v", err)
+		}
 		for _, field := range fields {
 			if value, ok := resource[field]; ok && value != "" {
-				fmt.Printf("- %s: %v\n", formatFieldName(field), value)
+				if _, err := fmt.Fprintf(os.Stdout, "- %s: %v\n", formatFieldName(field), value); err != nil {
+					log.Printf("warning: failed to write section field: %v", err)
+				}
 			}
 		}
 	}
 
 	if len(servers) > 0 {
-		fmt.Println("\nServers:")
+		if _, err := fmt.Fprintln(os.Stdout, "\nServers:"); err != nil {
+			log.Printf("warning: failed to write servers header: %v", err)
+		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-		fmt.Fprintf(w, "NAME\tADDRESS\tPORT\tWEIGHT\n")
-		fmt.Fprintf(w, "----\t-------\t----\t------\n")
+		if _, err := fmt.Fprintf(w, "NAME\tADDRESS\tPORT\tWEIGHT\n"); err != nil {
+			log.Printf("warning: failed to write servers header: %v", err)
+		}
+		if _, err := fmt.Fprintf(w, "----\t-------\t----\t------\n"); err != nil {
+			log.Printf("warning: failed to write servers separator: %v", err)
+		}
 		for _, server := range servers {
-			fmt.Fprintf(w, "%s\t%s\t%v\t%v\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%v\t%v\n",
 				server["name"],
 				server["address"],
 				server["port"],
 				server["weight"],
-			)
+			); err != nil {
+				log.Printf("warning: failed to write server row: %v", err)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			log.Printf("warning: failed to flush servers table: %v", err)
+		}
 	}
 }
 
-// printTable formats structured data into a clean table like kubectl
+// printTable formats structured data into a clean table like kubectl.
 func printTable(data []interface{}) {
 	if len(data) == 0 {
-		fmt.Println("No resources found.")
+		if _, err := fmt.Fprintln(os.Stdout, "No resources found."); err != nil {
+			log.Printf("warning: failed to write empty-table message: %v", err)
+		}
 		return
 	}
 
 	firstRow, ok := data[0].(map[string]interface{})
 	if !ok {
-		fmt.Println("Invalid data format.")
+		if _, err := fmt.Fprintln(os.Stdout, "Invalid data format."); err != nil {
+			log.Printf("warning: failed to write invalid-data message: %v", err)
+		}
 		return
 	}
 
@@ -163,14 +203,26 @@ func printTable(data []interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 
 	for _, key := range headers {
-		fmt.Fprintf(w, "%s\t", strings.ToUpper(key))
+		if _, err := fmt.Fprintf(w, "%s\t", strings.ToUpper(key)); err != nil {
+			log.Printf("warning: failed to write table header: %v", err)
+			return
+		}
 	}
-	fmt.Fprintln(w)
+	if _, err := fmt.Fprintln(w); err != nil {
+		log.Printf("warning: failed to terminate header line: %v", err)
+		return
+	}
 
 	for range headers {
-		fmt.Fprintf(w, "--------\t")
+		if _, err := fmt.Fprintf(w, "--------\t"); err != nil {
+			log.Printf("warning: failed to write header separator: %v", err)
+			return
+		}
 	}
-	fmt.Fprintln(w)
+	if _, err := fmt.Fprintln(w); err != nil {
+		log.Printf("warning: failed to terminate separator line: %v", err)
+		return
+	}
 
 	for _, row := range data {
 		rowMap, ok := row.(map[string]interface{})
@@ -178,15 +230,23 @@ func printTable(data []interface{}) {
 			continue
 		}
 		for _, key := range headers {
-			fmt.Fprintf(w, "%v\t", formatValue(rowMap[key]))
+			if _, err := fmt.Fprintf(w, "%v\t", formatValue(rowMap[key])); err != nil {
+				log.Printf("warning: failed to write table value: %v", err)
+				return
+			}
 		}
-		fmt.Fprintln(w)
+		if _, err := fmt.Fprintln(w); err != nil {
+			log.Printf("warning: failed to terminate row line: %v", err)
+			return
+		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		log.Printf("warning: failed to flush table: %v", err)
+	}
 }
 
-// getSortedKeys ensures "NAME" or similar fields appear first, with the rest sorted alphabetically
+// getSortedKeys ensures "NAME" or similar fields appear first, with the rest sorted alphabetically.
 func getSortedKeys(row map[string]interface{}) []string {
 	priorityFields := []string{"name", "acl_name", "id"}
 
@@ -211,12 +271,12 @@ func getSortedKeys(row map[string]interface{}) []string {
 	return otherColumns
 }
 
-// formatFieldName makes fields look prettier (timeout_client -> Timeout client)
+// formatFieldName makes fields look prettier (timeout_client -> Timeout client).
 func formatFieldName(name string) string {
 	return cases.Title(language.English).String(strings.ReplaceAll(name, "_", " "))
 }
 
-// formatValue ensures human-readable formatting for values
+// formatValue ensures human-readable formatting for values.
 func formatValue(value interface{}) string {
 	if value == nil {
 		return "-"
@@ -227,7 +287,7 @@ func formatValue(value interface{}) string {
 	case float64:
 		return fmt.Sprintf("%.0f", v) // Remove decimals if number
 	case bool:
-		return fmt.Sprintf("%t", v) // Print true/false
+		return strconv.FormatBool(v) // Print true/false
 	case []interface{}:
 		return formatList(v) // <- Handle lists (like servers)
 	case map[string]interface{}:
@@ -237,13 +297,13 @@ func formatValue(value interface{}) string {
 	}
 }
 
-// TODO
+// formatList formats list values for table output.
 func formatList(list []interface{}) string {
 	if len(list) == 0 {
 		return "-"
 	}
 
-	// Special case: detect if this is a list of servers
+	// Special case: detect if this is a list of servers.
 	if first, ok := list[0].(map[string]interface{}); ok && isServerObject(first) {
 		var servers []string
 		for _, item := range list {
@@ -256,7 +316,7 @@ func formatList(list []interface{}) string {
 		return strings.Join(servers, ", ")
 	}
 
-	// Fallback for generic lists (non-servers)
+	// Fallback for generic lists (non-servers).
 	return fmt.Sprintf("%v", list)
 }
 
@@ -267,7 +327,7 @@ func isServerObject(item map[string]interface{}) bool {
 	return hasName && hasAddress && hasPort
 }
 
-// formatNestedMap handles nested structures (like balance.algorithm)
+// formatNestedMap handles nested structures (like balance.algorithm).
 func formatNestedMap(nested map[string]interface{}) string {
 	if len(nested) == 1 {
 		for _, v := range nested {
@@ -296,4 +356,24 @@ func ParseDurationToMillis(s string) (int, error) {
 		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
 	}
 	return int(d / time.Millisecond), nil
+}
+
+// FormatMillisAsDuration renders a millisecond value as a human‑readable
+// duration string (e.g. 30000 -> "30s"). A zero value returns an empty
+// string so omitted timeouts remain omitted in manifests.
+func FormatMillisAsDuration(ms int) string {
+	if ms == 0 {
+		return ""
+	}
+	d := time.Duration(ms) * time.Millisecond
+	return d.String()
+}
+
+// ManifestList represents a generic list of manifest-style resources,
+// similar to the Kubernetes List type. It is used only for structured
+// YAML/JSON output (e.g. get ... -o yaml) and is not used in table mode.
+type ManifestList struct {
+	APIVersion string        `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string        `json:"kind" yaml:"kind"`
+	Items      []interface{} `json:"items" yaml:"items"`
 }

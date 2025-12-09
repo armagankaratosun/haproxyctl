@@ -1,3 +1,4 @@
+// Package internal contains shared helpers for haproxyctl.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -20,9 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 )
 
-// ExtractOptionalArg extracts the optional second argument (resource name), if provided
+// ExtractOptionalArg extracts the optional second argument (resource name), if provided.
 func ExtractOptionalArg(args []string) string {
 	if len(args) > 1 {
 		return args[1]
@@ -30,7 +32,7 @@ func ExtractOptionalArg(args []string) string {
 	return ""
 }
 
-// EnrichBackendWithServers fetches and attaches servers to a backend object as []interface{}
+// EnrichBackendWithServers fetches and attaches servers to a backend object as []interface{}.
 func EnrichBackendWithServers(backend map[string]interface{}) {
 	backendName, ok := backend["name"].(string)
 	if !ok || backendName == "" {
@@ -48,7 +50,7 @@ func EnrichBackendWithServers(backend map[string]interface{}) {
 		log.Fatalf("Failed to parse servers response: %v\nResponse: %s", err, string(data))
 	}
 
-	var serverInterfaces []interface{}
+	serverInterfaces := make([]interface{}, 0, len(servers))
 	for _, server := range servers {
 		if !isServerObject(server) {
 			log.Fatalf("Unexpected server format in backend %s: %+v", backendName, server)
@@ -56,11 +58,42 @@ func EnrichBackendWithServers(backend map[string]interface{}) {
 		serverInterfaces = append(serverInterfaces, server)
 	}
 
-	// Attach as []interface{}, which plays nicely with formatList()
+	// Attach as []interface{}, which plays nicely with formatList().
 	backend["servers"] = serverInterfaces
 }
 
-// ValidateBackend performs basic validation for backend fields
+// EnrichFrontendWithBinds fetches and attaches binds to a frontend object as []interface{}.
+// This allows table output to render a compact binds column similar to how servers
+// are shown for backends.
+func EnrichFrontendWithBinds(frontend map[string]interface{}) {
+	frontendName, ok := frontend["name"].(string)
+	if !ok || frontendName == "" {
+		log.Fatalf("Frontend has no valid name field: %+v", frontend)
+	}
+
+	// Encode the frontend name in case it contains characters that need escaping.
+	escapedName := url.PathEscape(frontendName)
+
+	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/binds", escapedName)
+	data, err := SendRequest("GET", endpoint, nil, nil)
+	if err != nil {
+		log.Fatalf("Failed to fetch binds for frontend %s: %v", frontendName, err)
+	}
+
+	var binds []map[string]interface{}
+	if err := json.Unmarshal(data, &binds); err != nil {
+		log.Fatalf("Failed to parse binds response: %v\nResponse: %s", err, string(data))
+	}
+
+	bindInterfaces := make([]interface{}, 0, len(binds))
+	for _, bind := range binds {
+		bindInterfaces = append(bindInterfaces, bind)
+	}
+
+	frontend["binds"] = bindInterfaces
+}
+
+// ValidateBackend performs basic validation for backend fields.
 func ValidateBackend(backend map[string]interface{}) error {
 	requiredFields := []string{"name", "mode", "balance"}
 

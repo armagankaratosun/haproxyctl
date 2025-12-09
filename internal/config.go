@@ -1,3 +1,4 @@
+// Package internal contains shared helpers for haproxyctl.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -27,18 +28,18 @@ import (
 // It mirrors what the `haproxyctl auth` command writes to
 // ~/.config/haproxyctl/config.json:
 //
-// {
-//   "api_base_url": "https://example:5555",
-//   "username": "admin",
-//   "password": "secret"
-// }
+//	{
+//	  "api_base_url": "https://example:5555",
+//	  "username": "admin",
+//	  "password": "secret"
+//	}
 type Config struct {
 	APIBaseURL string `json:"api_base_url"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 }
 
-// Default config file path
+// Default config file path.
 var configFilePath string
 
 func init() {
@@ -46,7 +47,7 @@ func init() {
 	configFilePath = filepath.Join(usr.HomeDir, ".config", "haproxyctl", "config.json")
 }
 
-// LoadConfig loads API configuration from ~/.config/haproxyctl/config.json
+// LoadConfig loads API configuration from ~/.config/haproxyctl/config.json.
 func LoadConfig() (Config, error) {
 	var cfg Config
 	file, err := os.ReadFile(configFilePath)

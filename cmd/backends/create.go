@@ -1,3 +1,4 @@
+// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -19,15 +20,15 @@ import (
 	"fmt"
 	"haproxyctl/cmd/servers"
 	"haproxyctl/internal"
-
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-// CreateBackendsCmd represents "create backends"
+// CreateBackendsCmd represents "create backends".
 var CreateBackendsCmd = &cobra.Command{
 	Use:   "backends <backend_name>",
 	Short: "Create a new HAProxy backend",
@@ -52,16 +53,16 @@ Examples:
 			log.Fatalf("Invalid backend configuration: %v", err)
 		}
 
-	outputFormat := internal.GetFlagString(cmd, "output")
-	dryRun := internal.GetFlagBool(cmd, "dry-run")
+		outputFormat := internal.GetFlagString(cmd, "output")
+		dryRun := internal.GetFlagBool(cmd, "dry-run")
 
-	if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
-		log.Fatalf("Failed to create backend: %v", err)
+		if err := createBackend(backendWithServers, outputFormat, dryRun); err != nil {
+			log.Fatalf("Failed to create backend: %v", err)
 		}
 	},
 }
 
-// CreateBackendFromFile is used for "haproxyctl create -f file.yaml"
+// CreateBackendFromFile is used for "haproxyctl create -f file.yaml".
 func CreateBackendFromFile(data []byte) error {
 	var backendWithServers backendWithServers
 	if err := yaml.Unmarshal(data, &backendWithServers); err != nil {
@@ -75,7 +76,7 @@ func CreateBackendFromFile(data []byte) error {
 	return createBackend(backendWithServers, "", false)
 }
 
-// createBackend handles backend creation with validation
+// createBackend handles backend creation with validation.
 func createBackend(backendWithServers backendWithServers, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
 		// For structured formats, preview the actual API payload
@@ -83,13 +84,15 @@ func createBackend(backendWithServers backendWithServers, outputFormat string, d
 		// default case (no -o), render a YAML view of the richer
 		// backendWithServers structure.
 		if outputFormat == "" {
-			outputFormat = "yaml"
+			outputFormat = internal.OutputFormatYAML
 			internal.FormatOutput(backendWithServers, outputFormat)
 		} else {
 			internal.FormatOutput(backendWithServers.toPayload(), outputFormat)
 		}
 		if dryRun {
-			fmt.Println("Dry run mode enabled. No changes made.")
+			if _, err := fmt.Fprintln(os.Stdout, "Dry run mode enabled. No changes made."); err != nil {
+				log.Printf("warning: failed to write dry‑run message: %v", err)
+			}
 		}
 		return nil
 	}
@@ -106,7 +109,9 @@ func createBackend(backendWithServers backendWithServers, outputFormat string, d
 	if err != nil {
 		return fmt.Errorf("failed to create backend '%s': %w", backendWithServers.Name, err)
 	}
-	fmt.Printf("Backend '%s' created successfully.\n", backendWithServers.Name)
+	if _, err := fmt.Fprintf(os.Stdout, "Backend '%s' created successfully.\n", backendWithServers.Name); err != nil {
+		log.Printf("warning: failed to write backend created message: %v", err)
+	}
 
 	// Create attached servers if any
 	for _, server := range backendWithServers.Servers {
@@ -137,5 +142,4 @@ func init() {
 	// Output and dry-run
 	CreateBackendsCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
 	CreateBackendsCmd.Flags().Bool("dry-run", false, "Simulate creation without actually applying")
-
 }

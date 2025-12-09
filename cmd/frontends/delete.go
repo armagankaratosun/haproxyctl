@@ -13,37 +13,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package frontends provides commands to manage HAProxy frontends.
 package frontends
 
 import (
 	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
-// DeleteFrontendsCmd represents "delete frontends"
+// DeleteFrontendsCmd represents "delete frontends".
 var DeleteFrontendsCmd = &cobra.Command{
 	Use:   "frontends <frontend_name>",
 	Short: "Delete a specific HAProxy frontend",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		frontendName := args[0]
 		deleteFrontend(frontendName)
 	},
 }
 
-// deleteFrontend handles frontend deletion
+// deleteFrontend handles frontend deletion.
 func deleteFrontend(frontendName string) {
 	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
+	endpoint := "/services/haproxy/configuration/frontends/" + frontendName
 	_, err = internal.SendRequest("DELETE",
-		fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName),
+		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		nil,
 	)
@@ -51,5 +55,7 @@ func deleteFrontend(frontendName string) {
 		log.Fatalf("Failed to delete frontend '%s': %v", frontendName, err)
 	}
 
-	fmt.Printf("Frontend '%s' deleted successfully.\n", frontendName)
+	if _, err := fmt.Fprintf(os.Stdout, "Frontend '%s' deleted successfully.\n", frontendName); err != nil {
+		log.Printf("warning: failed to write frontend deleted message: %v", err)
+	}
 }

@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package configuration provides commands to manage HAProxy global configuration.
 package configuration
 
 import (
-	"fmt"
 	"haproxyctl/internal"
 	"log"
 	"os"
@@ -25,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// CreateConfigurationCmd represents "create configuration"
+// CreateConfigurationCmd represents "create configuration".
 var CreateConfigurationCmd = &cobra.Command{
 	Use:   "configuration",
 	Short: "Manage HAProxy configuration",
@@ -34,7 +35,7 @@ var CreateConfigurationCmd = &cobra.Command{
 You can push a raw HAProxy config file, automatically handling version checks.`,
 }
 
-// createConfigRawCmd represents "create configuration raw"
+// createConfigRawCmd represents "create configuration raw".
 var createConfigRawCmd = &cobra.Command{
 	Use:   "raw [file_path]",
 	Short: "Upload a raw HAProxy configuration file",
@@ -86,11 +87,10 @@ Examples:
 			log.Fatalf("failed to push raw configuration: %v", err)
 		}
 
-		fmt.Println("raw configuration pushed")
+		cmd.Println("raw configuration pushed")
 	},
 }
 
 func init() {
 	CreateConfigurationCmd.AddCommand(createConfigRawCmd)
-
 }

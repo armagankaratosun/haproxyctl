@@ -1,3 +1,4 @@
+// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -16,40 +17,39 @@ limitations under the License.
 package backends
 
 import (
-	"fmt"
 	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
 )
 
-// DescribeBackendsCmd represents "describe backends"
+// DescribeBackendsCmd represents "describe backends".
 var DescribeBackendsCmd = &cobra.Command{
 	Use:   "backends <backend_name>",
 	Short: "Describe a specific HAProxy backend and its servers",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		backendName := args[0]
 		describeBackend(backendName)
 	},
 }
 
-// describeBackend fetches a backend and its servers, and prints a detailed description
+// describeBackend fetches a backend and its servers, and prints a detailed description.
 func describeBackend(backendName string) {
-	backend, err := internal.GetResource(fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName))
+	backend, err := internal.GetResource("/services/haproxy/configuration/backends/" + backendName)
 	if err != nil {
 		log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
 	}
 
-	servers, err := internal.GetResourceList(fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers", backendName))
+	servers, err := internal.GetResourceList("/services/haproxy/configuration/backends/" + backendName + "/servers")
 	if err != nil {
 		log.Fatalf("Failed to fetch servers for backend '%s': %v", backendName, err)
 	}
 
-	internal.PrintResourceDescription("Backend", backend, backendDescriptionSections(), servers)
+	internal.PrintResourceDescription(backendKind, backend, backendDescriptionSections(), servers)
 }
 
-// backendDescriptionSections defines the sections and fields to display in backend descriptions
+// backendDescriptionSections defines the sections and fields to display in backend descriptions.
 func backendDescriptionSections() map[string][]string {
 	return map[string][]string{
 		"basic":          {"name", "mode", "balance"},

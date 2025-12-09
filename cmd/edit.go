@@ -18,29 +18,25 @@ limitations under the License.
 package cmd
 
 import (
-	"log"
-
 	"haproxyctl/cmd/backends"
 	"haproxyctl/cmd/frontends"
-	"haproxyctl/cmd/servers"
 
 	"github.com/spf13/cobra"
 )
 
-// deleteCmd represents the delete command.
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete resources in HAProxy",
-	Run: func(_ *cobra.Command, _ []string) {
-		log.Fatal("Specify a resource type (backends, servers).")
+// editCmd is the entrypoint for interactive editing of resources.
+var editCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Edit HAProxy resources in your editor",
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		// If no subcommand is given, show help.
+		return cmd.Help()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(editCmd)
 
-	// Add subcommands.
-	deleteCmd.AddCommand(backends.DeleteBackendsCmd)
-	deleteCmd.AddCommand(servers.DeleteServersCmd)
-	deleteCmd.AddCommand(frontends.DeleteFrontendsCmd)
+	editCmd.AddCommand(backends.EditBackendsCmd)
+	editCmd.AddCommand(frontends.EditFrontendsCmd)
 }

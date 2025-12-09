@@ -1,3 +1,4 @@
+// Package internal contains shared helpers for haproxyctl.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -17,7 +18,7 @@ package internal
 
 import "strings"
 
-// TODO
+// Contains reports whether slice contains item.
 func Contains(slice []string, item string) bool {
 	for _, each := range slice {
 		if each == item {
@@ -27,6 +28,7 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
+// SplitResourceName splits a resource string like "type/name" into its components.
 func SplitResourceName(resource string) []string {
 	return strings.SplitN(resource, "/", 2)
 }

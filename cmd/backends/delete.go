@@ -1,3 +1,4 @@
+// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -19,31 +20,33 @@ import (
 	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
-// DeleteBackendsCmd represents "delete backends"
+// DeleteBackendsCmd represents "delete backends".
 var DeleteBackendsCmd = &cobra.Command{
 	Use:   "backends <backend_name>",
 	Short: "Delete a specific HAProxy backend",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		backendName := args[0]
 		deleteBackend(backendName)
 	},
 }
 
-// deleteBackend handles backend deletion
+// deleteBackend handles backend deletion.
 func deleteBackend(backendName string) {
 	version, err := internal.GetConfigurationVersion()
 	if err != nil {
 		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
 	}
 
+	endpoint := "/services/haproxy/configuration/backends/" + backendName
 	_, err = internal.SendRequest("DELETE",
-		fmt.Sprintf("/services/haproxy/configuration/backends/%s", backendName),
+		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		nil,
 	)
@@ -51,5 +54,7 @@ func deleteBackend(backendName string) {
 		log.Fatalf("Failed to delete backend '%s': %v", backendName, err)
 	}
 
-	fmt.Printf("Backend '%s' deleted successfully.\n", backendName)
+	if _, err := fmt.Fprintf(os.Stdout, "Backend '%s' deleted successfully.\n", backendName); err != nil {
+		log.Printf("warning: failed to write backend deleted message: %v", err)
+	}
 }

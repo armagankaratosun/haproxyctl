@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package cmd wires top-level CLI commands for haproxyctl.
 package cmd
 
 import (
@@ -24,11 +26,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// describeCmd represents the describe command
+// describeCmd represents the describe command.
 var describeCmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Describe resources in HAProxy",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		log.Fatal("Specify a resource type (backends, servers).")
 	},
 }
@@ -36,8 +38,7 @@ var describeCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(describeCmd)
 
-	// Add subcommands
+	// Add subcommands.
 	describeCmd.AddCommand(backends.DescribeBackendsCmd)
 	describeCmd.AddCommand(servers.DescribeServersCmd)
-
 }

@@ -1,3 +1,4 @@
+// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -22,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetBackendsCmd represents "get backends"
+// GetBackendsCmd represents "get backends".
 var GetBackendsCmd = &cobra.Command{
 	Use:     "backends [backend_name]",
 	Aliases: []string{"backend"},
@@ -37,7 +38,7 @@ var GetBackendsCmd = &cobra.Command{
 	},
 }
 
-// getBackends handles fetching backends (list or single item)
+// getBackends handles fetching backends (list or single item).
 func getBackends(cmd *cobra.Command, backendName string) {
 	outputFormat := internal.GetFlagString(cmd, "output")
 
@@ -60,6 +61,9 @@ func getBackends(cmd *cobra.Command, backendName string) {
 			for i := range backendList {
 				internal.EnrichBackendWithServers(backendList[i])
 			}
+
+			internal.SortByStringField(backendList, "name")
+			data = backendList
 		}
 	} else {
 		// Fetch a specific backend (single object)

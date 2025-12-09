@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package configuration provides commands to manage HAProxy global configuration.
 package configuration
 
 import (
-	"fmt"
 	"log"
 
 	"haproxyctl/internal"
@@ -24,34 +25,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetConfigurationCmd represents the "get configuration" command
+// GetConfigurationCmd represents the "get configuration" command.
 var GetConfigurationCmd = &cobra.Command{
 	Use:   "configuration",
 	Short: "Fetch HAProxy configuration",
 	Long:  `Retrieve details about HAProxy configuration, including the version and raw configuration.`,
 }
 
-// getConfigurationVersionCmd fetches the HAProxy configuration version
+// getConfigurationVersionCmd fetches the HAProxy configuration version.
 var getConfigurationVersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Retrieves HAProxy configuration version in JSON format",
 	Long:  `Retrieves the current HAProxy configuration version.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		GetConfigurationVersion(cmd)
 	},
 }
 
-// getConfigurationRawCmd fetches the raw HAProxy configuration
+// getConfigurationRawCmd fetches the raw HAProxy configuration.
 var getConfigurationRawCmd = &cobra.Command{
 	Use:   "raw",
 	Short: "Retrieves raw HAProxy configuration",
 	Long:  `Retrieves the full raw HAProxy configuration.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		GetConfigurationRaw()
+	Run: func(cmd *cobra.Command, _ []string) {
+		data, err := GetConfigurationRaw(cmd)
+		if err != nil {
+			log.Fatalf("Failed to fetch raw configuration: %v", err)
+		}
+		cmd.Println(string(data))
 	},
 }
 
-// GetConfigurationVersion fetches and displays the configuration version
+// GetConfigurationVersion fetches and displays the configuration version.
 func GetConfigurationVersion(cmd *cobra.Command) {
 	outputFormat := internal.GetFlagString(cmd, "output")
 
@@ -71,18 +76,13 @@ func GetConfigurationVersion(cmd *cobra.Command) {
 	internal.FormatOutput(versionData, outputFormat)
 }
 
-// GetConfigurationRaw fetches and displays the raw HAProxy configuration
-func GetConfigurationRaw() {
-	data, err := internal.SendRequest("GET", "/services/haproxy/configuration/raw", nil, nil)
-	if err != nil {
-		log.Fatalf("Failed to fetch raw configuration: %v", err)
-	}
-
-	fmt.Println(string(data))
+// GetConfigurationRaw fetches the raw HAProxy configuration.
+func GetConfigurationRaw(cmd *cobra.Command) ([]byte, error) {
+	return internal.SendRequestWithContext(cmd.Context(), "GET", "/services/haproxy/configuration/raw", nil, nil)
 }
 
 func init() {
-	// Attach subcommands
+	// Attach subcommands.
 	GetConfigurationCmd.AddCommand(getConfigurationVersionCmd)
 	GetConfigurationCmd.AddCommand(getConfigurationRawCmd)
 }

@@ -15,6 +15,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package frontends provides commands to manage HAProxy frontends.
 package frontends
 
 import (
@@ -27,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// CreateFrontendsCmd represents "create frontends"
+// CreateFrontendsCmd represents "create frontends".
 var CreateFrontendsCmd = &cobra.Command{
 	Use:   "frontends <frontend_name>",
 	Short: "Create a new HAProxy frontend (and optional binds)",
@@ -70,7 +72,7 @@ Examples:
 		if outFmt != "" || dryRun {
 			internal.FormatOutput(frontend, outFmt)
 			if dryRun {
-				fmt.Println("dry‑run mode enabled; no changes made.")
+				cmd.Println("dry‑run mode enabled; no changes made.")
 			}
 			return
 		}
@@ -88,7 +90,7 @@ Examples:
 		if err != nil {
 			log.Fatalf("failed to create frontend %q: %v", frontend.Name, err)
 		}
-		fmt.Printf("frontend %q created\n", frontend.Name)
+		cmd.Printf("frontend %q created\n", frontend.Name)
 
 		for _, b := range frontend.Binds {
 			if err := createBind(frontend.Name, b); err != nil {
@@ -121,13 +123,63 @@ func init() {
 func createBind(frontendName string, bind BindConfig) error {
 	version, err := internal.GetConfigurationVersion()
 	if err != nil {
-		return fmt.Errorf("fetch version: %w", err)
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
+
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/binds", frontendName)
-	_, err = internal.SendRequest("POST",
+	_, err = internal.SendRequest(
+		"POST",
 		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		bind.toPayload(),
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create bind on frontend %q: %w", frontendName, err)
+	}
+
+	return nil
+}
+
+// updateBind replaces an existing bind on a frontend, addressed by its
+// underlying name. The BindConfig's Name field is not exposed in YAML
+// manifests but is preserved internally when editing.
+func updateBind(frontendName string, bind BindConfig) error {
+	version, err := internal.GetConfigurationVersion()
+	if err != nil {
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/binds/%s", frontendName, bind.Name)
+	_, err = internal.SendRequest(
+		"PUT",
+		endpoint,
+		map[string]string{"version": strconv.Itoa(version)},
+		bind.toPayload(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update bind %q on frontend %q: %w", bind.Name, frontendName, err)
+	}
+
+	return nil
+}
+
+// deleteBind removes an existing bind from a frontend by name.
+func deleteBind(frontendName, bindName string) error {
+	version, err := internal.GetConfigurationVersion()
+	if err != nil {
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/binds/%s", frontendName, bindName)
+	_, err = internal.SendRequest(
+		"DELETE",
+		endpoint,
+		map[string]string{"version": strconv.Itoa(version)},
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete bind %q from frontend %q: %w", bindName, frontendName, err)
+	}
+
+	return nil
 }

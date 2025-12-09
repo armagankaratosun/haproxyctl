@@ -13,17 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package frontends provides commands to manage HAProxy frontends.
 package frontends
 
 import (
-	"fmt"
 	"haproxyctl/internal"
 	"log"
 
 	"github.com/spf13/cobra"
 )
 
-// GetFrontendsCmd represents "get frontends"
+// GetFrontendsCmd represents "get frontends".
 var GetFrontendsCmd = &cobra.Command{
 	Use:     "frontends [frontend_name]",
 	Aliases: []string{"frontend"},
@@ -43,9 +44,24 @@ func getFrontends(cmd *cobra.Command, frontendName string) {
 	var err error
 
 	if frontendName != "" {
-		data, err = internal.GetResource(fmt.Sprintf("/services/haproxy/configuration/frontends/%s", frontendName))
+		data, err = internal.GetResource("/services/haproxy/configuration/frontends/" + frontendName)
+		if err == nil {
+			if frontend, ok := data.(map[string]interface{}); ok {
+				internal.EnrichFrontendWithBinds(frontend)
+			}
+		}
 	} else {
 		data, err = internal.GetResourceList("/services/haproxy/configuration/frontends")
+		if err == nil {
+			if frontendList, ok := data.([]map[string]interface{}); ok {
+				for i := range frontendList {
+					internal.EnrichFrontendWithBinds(frontendList[i])
+				}
+
+				internal.SortByStringField(frontendList, "name")
+				data = frontendList
+			}
+		}
 	}
 
 	if err != nil {
@@ -62,6 +78,6 @@ func getFrontends(cmd *cobra.Command, frontendName string) {
 }
 
 func init() {
-	// Ensure this command also inherits the `-o` flag
+	// Ensure this command also inherits the `-o` flag.
 	GetFrontendsCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")
 }

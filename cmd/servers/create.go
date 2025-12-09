@@ -13,19 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package servers provides commands to manage HAProxy backend servers.
 package servers
 
 import (
 	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-// CreateServersCmd represents "create servers"
+// CreateServersCmd represents "create servers".
 var CreateServersCmd = &cobra.Command{
 	Use:     "servers <backend_name> <server_name>",
 	Aliases: []string{"server"},
@@ -58,21 +61,23 @@ Examples:
 	},
 }
 
-// CreateServer is the shared function to create a server via API
-// Used by both `create servers` and `create backends --server=...`
+// CreateServer is the shared function to create a server via API.
+// Used by both `create servers` and `create backends --server=...`.
 func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 	if outputFormat != "" || dryRun {
 		// For structured formats, preview the actual API payload
 		// (with ssl encoded as an enum). For the default case
 		// (no -o), render a YAML view of the richer ServerConfig.
 		if outputFormat == "" {
-			outputFormat = "yaml"
+			outputFormat = internal.OutputFormatYAML
 			internal.FormatOutput(server, outputFormat)
 		} else {
 			internal.FormatOutput(server.toPayload(), outputFormat)
 		}
 		if dryRun {
-			fmt.Println("Dry run mode enabled. No changes made.")
+			if _, err := fmt.Fprintln(os.Stdout, "Dry run mode enabled. No changes made."); err != nil {
+				log.Printf("warning: failed to write server dry‑run message: %v", err)
+			}
 		}
 		return nil
 	}
@@ -96,11 +101,45 @@ func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 		return fmt.Errorf("failed to create server '%s': %w", server.Name, err)
 	}
 
-	fmt.Printf("Server '%s' added to backend '%s'.\n", server.Name, server.Parent)
+	if _, err := fmt.Fprintf(os.Stdout, "Server '%s' added to backend '%s'.\n", server.Name, server.Parent); err != nil {
+		log.Printf("warning: failed to write server created message: %v", err)
+	}
 	return nil
 }
 
-// CreateServerFromFile handles creating a server from a YAML file
+// UpdateServer updates an existing server definition in a backend via
+// the HAProxy Data Plane API v3.
+func UpdateServer(server ServerConfig) error {
+	if err := server.NormalizeParent(); err != nil {
+		return fmt.Errorf("invalid server configuration: %w", err)
+	}
+
+	version, err := internal.GetConfigurationVersion()
+	if err != nil {
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
+	}
+
+	endpoint := fmt.Sprintf(
+		"/services/haproxy/configuration/backends/%s/servers/%s",
+		server.Parent,
+		server.Name,
+	)
+
+	_, err = internal.SendRequest("PUT", endpoint,
+		map[string]string{"version": strconv.Itoa(version)},
+		server.toPayload(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update server '%s' in backend '%s': %w", server.Name, server.Parent, err)
+	}
+
+	if _, err := fmt.Fprintf(os.Stdout, "Server '%s' updated in backend '%s'.\n", server.Name, server.Parent); err != nil {
+		log.Printf("warning: failed to write server updated message: %v", err)
+	}
+	return nil
+}
+
+// CreateServerFromFile handles creating a server from a YAML file.
 func CreateServerFromFile(data []byte) error {
 	var server ServerConfig
 	if err := yaml.Unmarshal(data, &server); err != nil {

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package cmd wires top-level CLI commands for haproxyctl.
 package cmd
 
 import (
@@ -31,11 +33,11 @@ import (
 
 var createFile string
 
-// createCmd represents the top-level "create" command
+// createCmd represents the top-level "create" command.
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a resource in HAProxy",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if createFile != "" {
 			return createFromFile(createFile)
 		}
@@ -51,7 +53,7 @@ func createFromFile(filepath string) error {
 		return fmt.Errorf("failed to read file %s: %w", filepath, err)
 	}
 
-	// Extract kind and apiVersion to figure out what to do
+	// Extract kind and apiVersion to figure out what to do.
 	var metadata struct {
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
@@ -75,7 +77,7 @@ func createFromFile(filepath string) error {
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	// Add subcommands for explicit CLI resource creation (with positional args)
+	// Add subcommands for explicit CLI resource creation (with positional args).
 	createCmd.AddCommand(backends.CreateBackendsCmd)
 	createCmd.AddCommand(servers.CreateServersCmd)
 	createCmd.AddCommand(frontends.CreateFrontendsCmd)
@@ -83,5 +85,4 @@ func init() {
 
 	// Global flag for file-based creation (works for both backends and servers)
 	createCmd.Flags().StringVarP(&createFile, "file", "f", "", "Create resource from YAML file (supports kind: Backend and kind: Server)")
-
 }

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package servers provides commands to manage HAProxy backend servers.
 package servers
 
 import (
@@ -23,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DescribeServersCmd represents "describe server"
+// DescribeServersCmd represents "describe server".
 var DescribeServersCmd = &cobra.Command{
 	Use:     "server <backend_name> <server_name>",
 	Aliases: []string{"servers"},
@@ -33,14 +35,14 @@ var DescribeServersCmd = &cobra.Command{
 Example:
   haproxyctl describe server mybackend myserver`,
 	Args: cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		backendName := args[0]
 		serverName := args[1]
 		describeServer(backendName, serverName)
 	},
 }
 
-// describeServer fetches and prints details of a server within a backend
+// describeServer fetches and prints details of a server within a backend.
 func describeServer(backendName, serverName string) {
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers/%s", backendName, serverName)
 
@@ -52,7 +54,7 @@ func describeServer(backendName, serverName string) {
 	internal.PrintResourceDescription("Server", server, serverDescriptionSections(), nil)
 }
 
-// serverDescriptionSections defines sections for server description output
+// serverDescriptionSections defines sections for server description output.
 func serverDescriptionSections() map[string][]string {
 	return map[string][]string{
 		"basic":    {"name", "address", "port", "weight"},

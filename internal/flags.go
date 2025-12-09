@@ -1,3 +1,4 @@
+// Package internal contains shared helpers for haproxyctl.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -65,7 +66,7 @@ func ParseKeyValueString(input string) (map[string]string, error) {
 	return result, nil
 }
 
-// ParseKeyValueFlag parses a Cobra flag containing key=value pairs
+// ParseKeyValueFlag parses a Cobra flag containing key=value pairs.
 func ParseKeyValueFlag(cmd *cobra.Command, flagName string) map[string]string {
 	values, err := cmd.Flags().GetStringToString(flagName)
 	if err != nil {
@@ -77,7 +78,7 @@ func ParseKeyValueFlag(cmd *cobra.Command, flagName string) map[string]string {
 	return values
 }
 
-// GetFlagString fetches a string flag value
+// GetFlagString fetches a string flag value.
 func GetFlagString(cmd *cobra.Command, name string) string {
 	value, err := cmd.Flags().GetString(name)
 	if err != nil {
@@ -96,7 +97,7 @@ func GetFlagStringSlice(cmd *cobra.Command, name string) []string {
 	return values
 }
 
-// GetFlagBool fetches a boolean flag value
+// GetFlagBool fetches a boolean flag value.
 func GetFlagBool(cmd *cobra.Command, name string) bool {
 	value, err := cmd.Flags().GetBool(name)
 	if err != nil {
@@ -105,7 +106,7 @@ func GetFlagBool(cmd *cobra.Command, name string) bool {
 	return value
 }
 
-// GetFlagMap fetches a map flag value (key=value pairs)
+// GetFlagMap fetches a map flag value (key=value pairs).
 func GetFlagMap(cmd *cobra.Command, name string) map[string]string {
 	values, err := cmd.Flags().GetStringToString(name)
 	if err != nil {
@@ -114,7 +115,7 @@ func GetFlagMap(cmd *cobra.Command, name string) map[string]string {
 	return values
 }
 
-// GetFlagMapInterface fetches a map flag value and converts values to interface{} for compatibility
+// GetFlagMapInterface fetches a map flag value and converts values to interface{} for compatibility.
 func GetFlagMapInterface(cmd *cobra.Command, name string) map[string]interface{} {
 	values, err := cmd.Flags().GetStringToString(name)
 	if err != nil {
@@ -128,7 +129,7 @@ func GetFlagMapInterface(cmd *cobra.Command, name string) map[string]interface{}
 	return result
 }
 
-// GetFlagInt fetches an integer flag value
+// GetFlagInt fetches an integer flag value.
 func GetFlagInt(cmd *cobra.Command, name string) int {
 	value, err := cmd.Flags().GetInt(name)
 	if err != nil {

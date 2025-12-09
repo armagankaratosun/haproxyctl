@@ -1,3 +1,4 @@
+// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -16,6 +17,7 @@ limitations under the License.
 package backends
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -28,7 +30,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// backendConfig represents the full backend object in HAProxy Data Plane API
+const backendKind = "Backend"
+const stateEnabled = "enabled"
+
+// backendConfig represents the full backend object in HAProxy Data Plane API.
 type backendConfig struct {
 	Name                 string                   `json:"name" yaml:"name"`
 	Mode                 string                   `json:"mode,omitempty" yaml:"mode,omitempty"`
@@ -43,8 +48,8 @@ type backendConfig struct {
 	TCPRequestRules      []map[string]interface{} `json:"tcp_request_rules,omitempty" yaml:"tcp_request_rules,omitempty"`
 	ErrorFiles           []map[string]interface{} `json:"error_files,omitempty" yaml:"error_files,omitempty"`
 	TimeoutClient        string                   `json:"timeout_client,omitempty" yaml:"timeout_client,omitempty"`
-	TimeoutHttpKeepAlive string                   `json:"timeout_http_keep_alive,omitempty" yaml:"timeout_http_keep_alive,omitempty"`
-	TimeoutHttpRequest   string                   `json:"timeout_http_request,omitempty" yaml:"timeout_http_request,omitempty"`
+	TimeoutHTTPKeepAlive string                   `json:"timeout_http_keep_alive,omitempty" yaml:"timeout_http_keep_alive,omitempty"`
+	TimeoutHTTPRequest   string                   `json:"timeout_http_request,omitempty" yaml:"timeout_http_request,omitempty"`
 	TimeoutQueue         string                   `json:"timeout_queue,omitempty" yaml:"timeout_queue,omitempty"`
 	TimeoutServer        string                   `json:"timeout_server,omitempty" yaml:"timeout_server,omitempty"`
 	TimeoutServerFin     string                   `json:"timeout_server_fin,omitempty" yaml:"timeout_server_fin,omitempty"`
@@ -56,7 +61,7 @@ type backendConfig struct {
 	// payload struct before sending to the API.
 	TCPKA      bool              `yaml:"tcpka,omitempty" json:"-"`
 	Redispatch bool              `yaml:"redispatch,omitempty" json:"-"`
-	Source               map[string]string        `json:"source,omitempty" yaml:"source,omitempty"`
+	Source     map[string]string `json:"source,omitempty" yaml:"source,omitempty"`
 }
 
 // redispatchPayload matches the HAProxy Data Plane API v3 definition
@@ -72,8 +77,8 @@ type redispatchPayload struct {
 type backendPayload struct {
 	backendConfig
 	TimeoutClient        int                `json:"timeout_client,omitempty"`
-	TimeoutHttpKeepAlive int                `json:"timeout_http_keep_alive,omitempty"`
-	TimeoutHttpRequest   int                `json:"timeout_http_request,omitempty"`
+	TimeoutHTTPKeepAlive int                `json:"timeout_http_keep_alive,omitempty"`
+	TimeoutHTTPRequest   int                `json:"timeout_http_request,omitempty"`
 	TimeoutQueue         int                `json:"timeout_queue,omitempty"`
 	TimeoutServer        int                `json:"timeout_server,omitempty"`
 	TimeoutServerFin     int                `json:"timeout_server_fin,omitempty"`
@@ -81,7 +86,7 @@ type backendPayload struct {
 	Redispatch           *redispatchPayload `json:"redispatch,omitempty"`
 }
 
-// backendWithServers represents the user-facing object that includes servers
+// backendWithServers represents the user-facing object that includes servers.
 // This is the structure used when reading from files or CLI flags.
 type backendWithServers struct {
 	APIVersion    string                 `yaml:"apiVersion"`
@@ -101,11 +106,11 @@ func (b *backendWithServers) LoadFromFile(filepath string) error {
 	}
 
 	// Basic sanity check
-	if b.Kind != "Backend" {
-		return fmt.Errorf("invalid kind '%s', expected 'Backend'", b.Kind)
+	if b.Kind != backendKind {
+		return fmt.Errorf("invalid kind %q, expected %q", b.Kind, backendKind)
 	}
 	if b.APIVersion == "" {
-		return fmt.Errorf("apiVersion is required")
+		return errors.New("apiVersion is required")
 	}
 
 	return nil
@@ -114,7 +119,7 @@ func (b *backendWithServers) LoadFromFile(filepath string) error {
 // LoadFromFlags populates backend + servers from CLI flags.
 func (b *backendWithServers) LoadFromFlags(cmd *cobra.Command, backendName string) {
 	b.APIVersion = "haproxyctl/v1"
-	b.Kind = "Backend"
+	b.Kind = backendKind
 	b.Name = backendName
 	b.Mode = internal.GetFlagString(cmd, "mode")
 	b.Balance = internal.GetFlagMap(cmd, "balance")
@@ -129,8 +134,8 @@ func (b *backendWithServers) LoadFromFlags(cmd *cobra.Command, backendName strin
 	b.Servers = parseServersFromFlags(rawServers)
 }
 
-// parseServersFromFlags converts `--server` flags into servers.ServerConfig structs
-// Example: --server name=s1,address=10.0.0.1,port=80,weight=100
+// parseServersFromFlags converts `--server` flags into servers.ServerConfig structs.
+// Example: --server name=s1,address=10.0.0.1,port=80,weight=100.
 func parseServersFromFlags(rawServers []string) []servers.ServerConfig {
 	var result []servers.ServerConfig
 	for _, serverStr := range rawServers {
@@ -164,7 +169,7 @@ func parseServersFromFlags(rawServers []string) []servers.ServerConfig {
 	return result
 }
 
-// ToBackendConfig strips servers (API compatibility)
+// ToBackendConfig strips servers (API compatibility).
 func (b *backendWithServers) ToBackendConfig() backendConfig {
 	return b.backendConfig
 }
@@ -182,16 +187,16 @@ func (b *backendWithServers) toPayload() backendPayload {
 		payload.TimeoutClient = ms
 	}
 
-	if ms, err := internal.ParseDurationToMillis(b.TimeoutHttpKeepAlive); err != nil {
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutHTTPKeepAlive); err != nil {
 		log.Fatalf("invalid backend timeout_http_keep_alive: %v", err)
 	} else if ms > 0 {
-		payload.TimeoutHttpKeepAlive = ms
+		payload.TimeoutHTTPKeepAlive = ms
 	}
 
-	if ms, err := internal.ParseDurationToMillis(b.TimeoutHttpRequest); err != nil {
+	if ms, err := internal.ParseDurationToMillis(b.TimeoutHTTPRequest); err != nil {
 		log.Fatalf("invalid backend timeout_http_request: %v", err)
 	} else if ms > 0 {
-		payload.TimeoutHttpRequest = ms
+		payload.TimeoutHTTPRequest = ms
 	}
 
 	if ms, err := internal.ParseDurationToMillis(b.TimeoutQueue); err != nil {
@@ -213,12 +218,12 @@ func (b *backendWithServers) toPayload() backendPayload {
 	}
 
 	if b.TCPKA {
-		payload.TCPKA = "enabled"
+		payload.TCPKA = stateEnabled
 	}
 
 	if b.Redispatch {
 		payload.Redispatch = &redispatchPayload{
-			Enabled: "enabled",
+			Enabled: stateEnabled,
 			// Interval is optional; we leave it zero-value unless
 			// we add a flag to configure it.
 		}
@@ -230,20 +235,20 @@ func (b *backendWithServers) toPayload() backendPayload {
 // Validate does basic validation for backendWithServers.
 func (b *backendWithServers) Validate() error {
 	if b.Name == "" {
-		return fmt.Errorf("backend name is required")
+		return errors.New("backend name is required")
 	}
-	if b.Kind != "Backend" {
-		return fmt.Errorf("kind must be 'Backend'")
+	if b.Kind != backendKind {
+		return fmt.Errorf("kind must be %q", backendKind)
 	}
 	if b.APIVersion == "" {
-		return fmt.Errorf("apiVersion is required")
+		return errors.New("apiVersion is required")
 	}
 	if b.Mode != "http" && b.Mode != "tcp" {
 		return fmt.Errorf("invalid mode: %s (allowed: http, tcp)", b.Mode)
 	}
 	for _, server := range b.Servers {
 		if server.Name == "" || server.Address == "" || server.Port == 0 {
-			return fmt.Errorf("each server must have name, address, and port")
+			return errors.New("each server must have name, address, and port")
 		}
 	}
 	return nil
