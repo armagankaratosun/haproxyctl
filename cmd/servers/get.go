@@ -68,6 +68,10 @@ func getServers(cmd *cobra.Command, backendName, serverName string) {
 		if err := json.Unmarshal(data, &list); err != nil {
 			log.Fatalf("Failed to parse servers list response: %v\nResponse: %s", err, string(data))
 		}
+
+		// Ensure stable, predictable ordering of servers by name.
+		internal.SortByStringField(list, "name")
+
 		// For YAML/JSON, return a manifest-style List of Servers.
 		// For table output, keep the existing flat list.
 		if format == internal.OutputFormatYAML || format == "json" {

@@ -32,8 +32,8 @@ const (
 
 // ServerConfig represents the full server object in HAProxy Data Plane API.
 type ServerConfig struct {
-	APIVersion string `yaml:"apiVersion"`
-	Kind       string `yaml:"kind"`
+	APIVersion string `yaml:"apiVersion,omitempty"`
+	Kind       string `yaml:"kind,omitempty"`
 
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`

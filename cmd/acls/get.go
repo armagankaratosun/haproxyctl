@@ -54,6 +54,9 @@ func getACLs(frontendName string, cmd *cobra.Command) {
 		log.Fatalf("failed to parse ACL response: %v\nResponse: %s", err, string(data))
 	}
 
+	// Ensure deterministic ordering of ACLs by acl_name when listing.
+	internal.SortByStringField(acls, "acl_name")
+
 	// Use FormatOutput to pretty-print JSON or YAML
 	internal.FormatOutput(acls, outputFormat)
 }
