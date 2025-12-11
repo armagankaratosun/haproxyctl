@@ -18,11 +18,10 @@ limitations under the License.
 package frontends
 
 import (
-	"fmt"
-	"haproxyctl/internal"
 	"log"
-	"os"
 	"strconv"
+
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -55,7 +54,5 @@ func deleteFrontend(frontendName string) {
 		log.Fatalf("Failed to delete frontend '%s': %v", frontendName, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Frontend '%s' deleted successfully.\n", frontendName); err != nil {
-		log.Printf("warning: failed to write frontend deleted message: %v", err)
-	}
+	internal.PrintStatus("Frontend", frontendName, internal.ActionDeleted)
 }

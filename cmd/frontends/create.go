@@ -70,9 +70,14 @@ Examples:
 		outFmt := internal.GetFlagString(cmd, "output")
 		dryRun := internal.GetFlagBool(cmd, "dry-run")
 		if outFmt != "" || dryRun {
-			internal.FormatOutput(frontend, outFmt)
+			if outFmt == "" {
+				outFmt = internal.OutputFormatYAML
+				internal.FormatOutput(frontend, outFmt)
+			} else {
+				internal.FormatOutput(frontend.ToPayload(), outFmt)
+			}
 			if dryRun {
-				cmd.Println("dry‑run mode enabled; no changes made.")
+				internal.PrintDryRun()
 			}
 			return
 		}
@@ -90,7 +95,7 @@ Examples:
 		if err != nil {
 			log.Fatalf("failed to create frontend %q: %v", frontend.Name, err)
 		}
-		cmd.Printf("frontend %q created\n", frontend.Name)
+		internal.PrintStatus("Frontend", frontend.Name, internal.ActionCreated)
 
 		for _, b := range frontend.Binds {
 			if err := createBind(frontend.Name, b); err != nil {

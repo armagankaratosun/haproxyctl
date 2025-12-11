@@ -81,11 +81,26 @@ func ParseKeyValueFlag(cmd *cobra.Command, flagName string) map[string]string {
 
 // GetFlagString fetches a string flag value.
 func GetFlagString(cmd *cobra.Command, name string) string {
-	value, err := cmd.Flags().GetString(name)
-	if err != nil {
-		log.Fatalf("Failed to read flag %s: %v", name, err)
+	// Prefer local flag if defined on this command.
+	if f := cmd.Flags().Lookup(name); f != nil {
+		value, err := cmd.Flags().GetString(name)
+		if err != nil {
+			log.Fatalf("Failed to read flag %s: %v", name, err)
+		}
+		return value
 	}
-	return value
+
+	// Fall back to inherited (persistent) flags from parent commands.
+	if f := cmd.InheritedFlags().Lookup(name); f != nil {
+		value, err := cmd.InheritedFlags().GetString(name)
+		if err != nil {
+			log.Fatalf("Failed to read inherited flag %s: %v", name, err)
+		}
+		return value
+	}
+
+	// If the flag is not defined anywhere, treat it as empty.
+	return ""
 }
 
 // GetFlagStringSlice fetches a string slice/array flag value (for

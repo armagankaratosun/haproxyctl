@@ -187,6 +187,17 @@ func normalizeAPIBaseURL(raw string) string {
 	return base + "/v3"
 }
 
+// IsNotFoundError reports whether the given error corresponds to a 404
+// response from the Data Plane API. It inspects the wrapped error message
+// produced by SendRequest.
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// SendRequest formats errors as: "HAProxy API error (%d): ..."
+	return strings.Contains(err.Error(), "HAProxy API error (404)")
+}
+
 // GetResource retrieves a single resource (map[string]interface{}) from the API.
 func GetResource(endpoint string) (map[string]interface{}, error) {
 	data, err := SendRequest("GET", endpoint, nil, nil)

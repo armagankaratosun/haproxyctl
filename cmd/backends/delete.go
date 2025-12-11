@@ -17,10 +17,8 @@ limitations under the License.
 package backends
 
 import (
-	"fmt"
 	"haproxyctl/internal"
 	"log"
-	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -54,7 +52,5 @@ func deleteBackend(backendName string) {
 		log.Fatalf("Failed to delete backend '%s': %v", backendName, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Backend '%s' deleted successfully.\n", backendName); err != nil {
-		log.Printf("warning: failed to write backend deleted message: %v", err)
-	}
+	internal.PrintStatus("Backend", backendName, internal.ActionDeleted)
 }

@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
 
 	"github.com/spf13/cobra"
@@ -39,4 +40,5 @@ func init() {
 
 	editCmd.AddCommand(backends.EditBackendsCmd)
 	editCmd.AddCommand(frontends.EditFrontendsCmd)
+	editCmd.AddCommand(configuration.EditConfigurationCmd)
 }

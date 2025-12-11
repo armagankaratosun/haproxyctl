@@ -18,18 +18,114 @@ limitations under the License.
 package configuration
 
 import (
+	"fmt"
 	"log"
+	"os"
 
 	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
 
+const outputFormatJSON = "json"
+const globalRawHint = "configuration/globals no rules defined; use 'haproxyctl get configuration raw' and 'haproxyctl create configuration raw' for global settings"
+
 // GetConfigurationCmd represents the "get configuration" command.
 var GetConfigurationCmd = &cobra.Command{
 	Use:   "configuration",
 	Short: "Fetch HAProxy configuration",
 	Long:  `Retrieve details about HAProxy configuration, including the version and raw configuration.`,
+}
+
+// getConfigurationGlobalCmd fetches the HAProxy globals section via JSON.
+var getConfigurationGlobalCmd = &cobra.Command{
+	Use:     "globals",
+	Aliases: []string{"global"},
+	Short:   "Retrieves HAProxy global configuration",
+	Long:    `Retrieves the HAProxy "globals" section as JSON/YAML.`,
+	Run: func(cmd *cobra.Command, _ []string) {
+		outputFormat := internal.GetFlagString(cmd, "output")
+
+		obj, err := internal.GetResource("/services/haproxy/configuration/global")
+		if err != nil {
+			log.Fatalf("Failed to fetch global configuration: %v", err)
+		}
+
+		cfg := mapGlobalFromAPI(obj)
+
+		// If the API returns an empty JSON object for globals, there is no
+		// structured representation available; direct users to the raw config.
+		if outputFormat == "" && cfg.isEmpty() {
+			_, _ = fmt.Fprintln(os.Stdout, globalRawHint)
+			return
+		}
+
+		if outputFormat == "" {
+			row := map[string]interface{}{
+				"daemon":        cfg.Daemon,
+				"nbproc":        cfg.Nbproc,
+				"maxconn":       cfg.Maxconn,
+				"log":           cfg.Log,
+				"log_send_host": cfg.LogSendHost,
+				"stats_socket":  cfg.StatsSocket,
+				"stats_timeout": cfg.StatsTimeout,
+				"spread_checks": cfg.SpreadChecks,
+			}
+			internal.FormatOutput(row, "")
+			return
+		}
+
+		internal.FormatOutput(cfg, outputFormat)
+	},
+}
+
+// getConfigurationDefaultsCmd fetches the HAProxy defaults section via JSON.
+var getConfigurationDefaultsCmd = &cobra.Command{
+	Use:   "defaults",
+	Short: "Retrieves HAProxy defaults configuration",
+	Long:  `Retrieves the HAProxy "defaults" section as JSON/YAML.`,
+	Run: func(cmd *cobra.Command, _ []string) {
+		outputFormat := internal.GetFlagString(cmd, "output")
+
+		list, err := internal.GetResourceList("/services/haproxy/configuration/defaults")
+		if err != nil {
+			if internal.IsNotFoundError(err) {
+				_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
+				return
+			}
+			log.Fatalf("Failed to fetch defaults configuration: %v", err)
+		}
+
+		if len(list) == 0 {
+			_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
+			return
+		}
+
+		cfg := mapDefaultsFromAPI(list[0])
+
+		if outputFormat == "" && cfg.isEmpty() {
+			_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
+			return
+		}
+
+		if outputFormat == "" {
+			row := map[string]interface{}{
+				"name":            cfg.Name,
+				"mode":            cfg.Mode,
+				"timeout_client":  cfg.TimeoutClient,
+				"timeout_server":  cfg.TimeoutServer,
+				"timeout_connect": cfg.TimeoutConnect,
+				"timeout_queue":   cfg.TimeoutQueue,
+				"timeout_tunnel":  cfg.TimeoutTunnel,
+				"balance":         cfg.Balance,
+				"log":             cfg.Log,
+			}
+			internal.FormatOutput(row, "")
+			return
+		}
+
+		internal.FormatOutput(cfg, outputFormat)
+	},
 }
 
 // getConfigurationVersionCmd fetches the HAProxy configuration version.
@@ -70,7 +166,7 @@ func GetConfigurationVersion(cmd *cobra.Command) {
 
 	// Default to JSON if no explicit format is set, I know this is an ugly hack
 	if outputFormat == "" {
-		outputFormat = "json"
+		outputFormat = outputFormatJSON
 	}
 
 	internal.FormatOutput(versionData, outputFormat)
@@ -85,4 +181,6 @@ func init() {
 	// Attach subcommands.
 	GetConfigurationCmd.AddCommand(getConfigurationVersionCmd)
 	GetConfigurationCmd.AddCommand(getConfigurationRawCmd)
+	GetConfigurationCmd.AddCommand(getConfigurationGlobalCmd)
+	GetConfigurationCmd.AddCommand(getConfigurationDefaultsCmd)
 }

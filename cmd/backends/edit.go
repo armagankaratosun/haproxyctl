@@ -143,9 +143,7 @@ func editBackend(backendName string) error {
 		return fmt.Errorf("failed to apply server changes for backend %q: %w", backendName, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Backend %q updated.\n", backendName); err != nil {
-		log.Printf("warning: failed to write backend updated message: %v", err)
-	}
+	internal.PrintStatus("Backend", backendName, internal.ActionConfigured)
 	return nil
 }
 

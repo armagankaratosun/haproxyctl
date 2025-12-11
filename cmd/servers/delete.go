@@ -19,10 +19,10 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/internal"
 	"log"
-	"os"
 	"strconv"
+
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -66,8 +66,7 @@ func DeleteServer(backendName, serverName string) error {
 		return fmt.Errorf("failed to delete server '%s' in backend '%s': %w", serverName, backendName, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Server '%s' in backend '%s' deleted successfully.\n", serverName, backendName); err != nil {
-		log.Printf("warning: failed to write server deleted message: %v", err)
-	}
+	displayName := fmt.Sprintf("%s/%s", backendName, serverName)
+	internal.PrintStatus("Server", displayName, internal.ActionDeleted)
 	return nil
 }

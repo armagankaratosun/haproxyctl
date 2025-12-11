@@ -105,9 +105,7 @@ func editFrontend(frontendName string) error {
 	}
 
 	if bytes.Equal(bytes.TrimSpace(origYAML), bytes.TrimSpace(editedYAML)) {
-		if _, err := fmt.Fprintln(os.Stdout, "No changes made; exiting without update."); err != nil {
-			log.Printf("warning: failed to write no-change message for frontend %q: %v", frontendName, err)
-		}
+		internal.PrintStatus("Frontend", frontendName, internal.ActionUnchanged)
 		return nil
 	}
 
@@ -140,9 +138,7 @@ func editFrontend(frontendName string) error {
 		return fmt.Errorf("failed to apply bind changes for frontend %q: %w", frontendName, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Frontend %q updated.\n", frontendName); err != nil {
-		log.Printf("warning: failed to write frontend updated message: %v", err)
-	}
+	internal.PrintStatus("Frontend", frontendName, internal.ActionConfigured)
 	return nil
 }
 

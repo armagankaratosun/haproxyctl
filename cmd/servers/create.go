@@ -19,10 +19,10 @@ package servers
 
 import (
 	"fmt"
-	"haproxyctl/internal"
 	"log"
-	"os"
 	"strconv"
+
+	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -75,9 +75,7 @@ func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 			internal.FormatOutput(server.toPayload(), outputFormat)
 		}
 		if dryRun {
-			if _, err := fmt.Fprintln(os.Stdout, "Dry run mode enabled. No changes made."); err != nil {
-				log.Printf("warning: failed to write server dry‑run message: %v", err)
-			}
+			internal.PrintDryRun()
 		}
 		return nil
 	}
@@ -101,9 +99,8 @@ func CreateServer(server ServerConfig, outputFormat string, dryRun bool) error {
 		return fmt.Errorf("failed to create server '%s': %w", server.Name, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Server '%s' added to backend '%s'.\n", server.Name, server.Parent); err != nil {
-		log.Printf("warning: failed to write server created message: %v", err)
-	}
+	displayName := fmt.Sprintf("%s/%s", server.Parent, server.Name)
+	internal.PrintStatus("Server", displayName, internal.ActionCreated)
 	return nil
 }
 
@@ -133,9 +130,8 @@ func UpdateServer(server ServerConfig) error {
 		return fmt.Errorf("failed to update server '%s' in backend '%s': %w", server.Name, server.Parent, err)
 	}
 
-	if _, err := fmt.Fprintf(os.Stdout, "Server '%s' updated in backend '%s'.\n", server.Name, server.Parent); err != nil {
-		log.Printf("warning: failed to write server updated message: %v", err)
-	}
+	displayName := fmt.Sprintf("%s/%s", server.Parent, server.Name)
+	internal.PrintStatus("Server", displayName, internal.ActionConfigured)
 	return nil
 }
 

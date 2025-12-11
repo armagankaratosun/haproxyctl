@@ -21,7 +21,6 @@ import (
 	"haproxyctl/cmd/servers"
 	"haproxyctl/internal"
 	"log"
-	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -73,7 +72,10 @@ func CreateBackendFromFile(data []byte) error {
 		return fmt.Errorf("invalid backend configuration: %w", err)
 	}
 
-	return createBackend(backendWithServers, "", false)
+	if err := createBackend(backendWithServers, "", false); err != nil {
+		return internal.FormatAPIError("Backend", backendWithServers.Name, "create", err)
+	}
+	return nil
 }
 
 // createBackend handles backend creation with validation.
@@ -90,9 +92,7 @@ func createBackend(backendWithServers backendWithServers, outputFormat string, d
 			internal.FormatOutput(backendWithServers.toPayload(), outputFormat)
 		}
 		if dryRun {
-			if _, err := fmt.Fprintln(os.Stdout, "Dry run mode enabled. No changes made."); err != nil {
-				log.Printf("warning: failed to write dry‑run message: %v", err)
-			}
+			internal.PrintDryRun()
 		}
 		return nil
 	}
@@ -109,9 +109,7 @@ func createBackend(backendWithServers backendWithServers, outputFormat string, d
 	if err != nil {
 		return fmt.Errorf("failed to create backend '%s': %w", backendWithServers.Name, err)
 	}
-	if _, err := fmt.Fprintf(os.Stdout, "Backend '%s' created successfully.\n", backendWithServers.Name); err != nil {
-		log.Printf("warning: failed to write backend created message: %v", err)
-	}
+	internal.PrintStatus("Backend", backendWithServers.Name, internal.ActionCreated)
 
 	// Create attached servers if any
 	for _, server := range backendWithServers.Servers {
