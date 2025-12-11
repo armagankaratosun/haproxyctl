@@ -56,9 +56,10 @@ func OverrideFlagInt(cmd *cobra.Command, backendData map[string]interface{}, fla
 func ParseKeyValueString(input string) (map[string]string, error) {
 	result := make(map[string]string)
 	pairs := strings.Split(input, ",")
+	const keyValueParts = 2
 	for _, pair := range pairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) != 2 {
+		parts := strings.SplitN(pair, "=", keyValueParts)
+		if len(parts) != keyValueParts {
 			return nil, fmt.Errorf("invalid key=value pair: %s", pair)
 		}
 		result[parts[0]] = parts[1]

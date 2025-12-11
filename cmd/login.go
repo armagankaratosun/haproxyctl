@@ -84,15 +84,20 @@ These values get written to:
 		viper.SetConfigFile(configFile)
 		viper.SetConfigType("json")
 
+		const (
+			configDirPerm  = 0o700
+			configFilePerm = 0o600
+		)
+
 		// Ensure the config directory exists
 		// 3.1) Check if the config directory exists, if not, create
-		if err := os.MkdirAll(configDir, 0o700); err != nil {
+		if err := os.MkdirAll(configDir, configDirPerm); err != nil {
 			return fmt.Errorf("cannot create config dir %q: %w", configDir, err)
 		}
 		// 3.2) make sure the file itself exists
 		if _, err := os.Stat(configFile); os.IsNotExist(err) {
 			// If the file does not exist, create it with appropriate permissions
-			if err := os.WriteFile(configFile, []byte{}, 0o600); err != nil {
+			if err := os.WriteFile(configFile, []byte{}, configFilePerm); err != nil {
 				return fmt.Errorf("cannot create config file %q: %w", configFile, err)
 			}
 		}

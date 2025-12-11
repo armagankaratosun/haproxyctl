@@ -37,7 +37,7 @@ const OutputFormatYAML = "yaml"
 
 // LoadYAMLFile reads the content of a YAML file.
 func LoadYAMLFile(filepath string) ([]byte, error) {
-	data, err := os.ReadFile(filepath)
+	data, err := os.ReadFile(filepath) //nolint:gosec // CLI intentionally reads user-specified manifest paths
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filepath, err)
 	}
@@ -158,7 +158,12 @@ func PrintResourceDescription(resourceType string, resource map[string]interface
 		if _, err := fmt.Fprintln(os.Stdout, "\nServers:"); err != nil {
 			log.Printf("warning: failed to write servers header: %v", err)
 		}
-		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+		const (
+			tabWidth   = 8
+			tabPadding = 2
+		)
+
+		w := tabwriter.NewWriter(os.Stdout, 0, tabWidth, tabPadding, ' ', 0)
 		if _, err := fmt.Fprintf(w, "NAME\tADDRESS\tPORT\tWEIGHT\n"); err != nil {
 			log.Printf("warning: failed to write servers header: %v", err)
 		}
@@ -200,7 +205,12 @@ func printTable(data []interface{}) {
 
 	headers := getSortedKeys(firstRow)
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+	const (
+		printTabWidth   = 8
+		printTabPadding = 2
+	)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, printTabWidth, printTabPadding, ' ', 0)
 
 	for _, key := range headers {
 		if _, err := fmt.Fprintf(w, "%s\t", strings.ToUpper(key)); err != nil {

@@ -36,7 +36,7 @@ var GetServersCmd = &cobra.Command{
 Examples:
   haproxyctl get servers mybackend
   haproxyctl get servers mybackend myserver`,
-	Args: cobra.RangeArgs(1, 2),
+	Args: cobra.RangeArgs(1, serverArgsTwo),
 	Run: func(cmd *cobra.Command, args []string) {
 		backendName := args[0]
 		var serverName string

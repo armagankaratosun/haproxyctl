@@ -29,6 +29,8 @@ import (
 	"strings"
 )
 
+const httpErrorThreshold = 300
+
 // ParseAPIResponse unmarshals raw API response bytes into the provided target.
 func ParseAPIResponse(data []byte, target interface{}) {
 	err := json.Unmarshal(data, target)
@@ -106,7 +108,7 @@ func SendRequestWithContext(ctx context.Context, method, endpoint string, queryP
 		}
 	}()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= httpErrorThreshold {
 		bodyBytes, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			return nil, fmt.Errorf("HAProxy API error (%d) and failed to read error body: %w", resp.StatusCode, readErr)
@@ -162,7 +164,7 @@ func SendRawRequestWithContext(ctx context.Context, method, endpoint string, que
 	if err != nil {
 		return nil, fmt.Errorf("failed to read raw response body: %w", err)
 	}
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= httpErrorThreshold {
 		return nil, fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(body))
 	}
 	return body, nil

@@ -40,7 +40,7 @@ Examples:
     --address 10.0.0.1 \
     --port 80 \
     --weight 100`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.ExactArgs(serverArgsTwo),
 	Run: func(cmd *cobra.Command, args []string) {
 		backendName := args[0]
 		serverName := args[1]
@@ -160,7 +160,7 @@ func CreateServerFromFile(data []byte) error {
 func init() {
 	CreateServersCmd.Flags().String("address", "", "Server address (required)")
 	CreateServersCmd.Flags().Int("port", 0, "Server port (required)")
-	CreateServersCmd.Flags().Int("weight", 100, "Server weight (default: 100)")
+	CreateServersCmd.Flags().Int("weight", defaultServerWeight, "Server weight (default: 100)")
 	CreateServersCmd.Flags().Bool("ssl", false, "Enable SSL for the server")
 
 	CreateServersCmd.Flags().StringP("output", "o", "", "Output format: yaml or json")

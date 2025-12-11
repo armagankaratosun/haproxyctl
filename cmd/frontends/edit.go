@@ -97,7 +97,9 @@ func editFrontend(frontendName string) error {
 		return err
 	}
 
-	editedYAML, err := os.ReadFile(tmpFile)
+	// tmpFile is created via os.CreateTemp in WriteTempYAML and lives in
+	// the system temp directory, so this read is safe.
+	editedYAML, err := os.ReadFile(tmpFile) //nolint:gosec // tmpFile is controlled by this process
 	if err != nil {
 		return fmt.Errorf("failed to read edited file: %w", err)
 	}

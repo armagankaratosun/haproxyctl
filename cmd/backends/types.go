@@ -34,6 +34,10 @@ const backendKind = "Backend"
 const stateEnabled = "enabled"
 
 // backendConfig represents the full backend object in HAProxy Data Plane API.
+// Field tags must use HAProxy's snake_case names for interoperability with
+// the Data Plane API and configuration, so tagliatelle is not applicable here.
+//
+//nolint:tagliatelle
 type backendConfig struct {
 	Name                 string                   `json:"name" yaml:"name"`
 	Mode                 string                   `json:"mode,omitempty" yaml:"mode,omitempty"`
@@ -74,6 +78,8 @@ type redispatchPayload struct {
 // backendPayload is the wire-format representation of a backend,
 // embedding the base config while mapping tcpka/redispatch to their
 // v3 enum/object shapes.
+//
+//nolint:tagliatelle
 type backendPayload struct {
 	backendConfig
 	TimeoutClient        int                `json:"timeout_client,omitempty"`
@@ -134,6 +140,8 @@ func (b *backendWithServers) LoadFromFlags(cmd *cobra.Command, backendName strin
 	b.Servers = parseServersFromFlags(rawServers)
 }
 
+const keyValueParts = 2
+
 // parseServersFromFlags converts `--server` flags into servers.ServerConfig structs.
 // Example: --server name=s1,address=10.0.0.1,port=80,weight=100.
 func parseServersFromFlags(rawServers []string) []servers.ServerConfig {
@@ -142,8 +150,8 @@ func parseServersFromFlags(rawServers []string) []servers.ServerConfig {
 		parts := strings.Split(serverStr, ",")
 		server := servers.ServerConfig{}
 		for _, part := range parts {
-			kv := strings.SplitN(part, "=", 2)
-			if len(kv) != 2 {
+			kv := strings.SplitN(part, "=", keyValueParts)
+			if len(kv) != keyValueParts {
 				continue
 			}
 			key, value := strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1])

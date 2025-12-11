@@ -63,8 +63,9 @@ Examples:
 			log.Fatal("file path is required (positional or --file)")
 		}
 
-		// Read the raw HAProxy config
-		data, err := os.ReadFile(path)
+		// Read the raw HAProxy config. The path is explicitly provided
+		// by the user on the CLI, which is expected for this tool.
+		data, err := os.ReadFile(path) //nolint:gosec // CLI intentionally reads user-specified config path
 		if err != nil {
 			log.Fatalf("failed to read %s: %v", path, err)
 		}

@@ -25,6 +25,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	serverArgsTwo       = 2
+	defaultServerWeight = 100
+)
+
 // ServerConfig represents the full server object in HAProxy Data Plane API.
 type ServerConfig struct {
 	APIVersion string `yaml:"apiVersion"`

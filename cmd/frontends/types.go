@@ -64,6 +64,9 @@ func (b BindConfig) toPayload() bindPayload {
 }
 
 // frontendConfig is exactly what the HAProxy Data Plane API expects when creating/updating a frontend.
+// Field tags must match HAProxy's snake_case fields, so tagliatelle does not apply here.
+//
+//nolint:tagliatelle
 type frontendConfig struct {
 	Name                 string            `json:"name" yaml:"name"`
 	Mode                 string            `json:"mode,omitempty" yaml:"mode,omitempty"`
@@ -78,6 +81,8 @@ type frontendConfig struct {
 
 // frontendPayload is the wire-format representation of a frontend,
 // with timeout fields normalized to integer milliseconds for v3.
+//
+//nolint:tagliatelle
 type frontendPayload struct {
 	frontendConfig
 	TimeoutClient        int `json:"timeout_client,omitempty"`
@@ -220,6 +225,8 @@ func (f *frontendWithBinds) Validate() error {
 	return nil
 }
 
+const bindKeyValueParts = 2
+
 // parseBindsFromFlags turns strings like "address=0.0.0.0,port=80,ssl=enabled"
 // into a []BindConfig, converting port→int and ssl→bool.
 func parseBindsFromFlags(flags []string) []BindConfig {
@@ -228,8 +235,8 @@ func parseBindsFromFlags(flags []string) []BindConfig {
 		parts := strings.Split(raw, ",")
 		var b BindConfig
 		for _, kv := range parts {
-			pair := strings.SplitN(kv, "=", 2)
-			if len(pair) != 2 {
+			pair := strings.SplitN(kv, "=", bindKeyValueParts)
+			if len(pair) != bindKeyValueParts {
 				continue
 			}
 			key, val := pair[0], pair[1]

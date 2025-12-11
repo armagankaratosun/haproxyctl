@@ -17,6 +17,7 @@ limitations under the License.
 package internal
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -61,7 +62,9 @@ func OpenInEditor(path string) error {
 		editor = "vi"
 	}
 
-	cmd := exec.Command(editor, path)
+	// The editor command is intentionally user-controlled ($EDITOR/$VISUAL),
+	// which is a common pattern for CLIs that open an interactive editor.
+	cmd := exec.CommandContext(context.Background(), editor, path) //nolint:gosec // launching user-selected editor is expected behavior
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

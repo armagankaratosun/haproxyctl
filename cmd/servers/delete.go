@@ -36,7 +36,7 @@ var DeleteServersCmd = &cobra.Command{
 
 Example:
   haproxyctl delete server mybackend myserver`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.ExactArgs(serverArgsTwo),
 	Run: func(_ *cobra.Command, args []string) {
 		backendName := args[0]
 		serverName := args[1]

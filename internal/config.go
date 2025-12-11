@@ -34,7 +34,7 @@ import (
 //	  "password": "secret"
 //	}
 type Config struct {
-	APIBaseURL string `json:"api_base_url"`
+	APIBaseURL string `json:"api_base_url"` //nolint:tagliatelle // must match config JSON format
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 }
@@ -50,7 +50,7 @@ func init() {
 // LoadConfig loads API configuration from ~/.config/haproxyctl/config.json.
 func LoadConfig() (Config, error) {
 	var cfg Config
-	file, err := os.ReadFile(configFilePath)
+	file, err := os.ReadFile(configFilePath) //nolint:gosec // configFilePath is a fixed path under the user's home dir
 	if err != nil {
 		return cfg, fmt.Errorf("failed to read config file: %w", err)
 	}

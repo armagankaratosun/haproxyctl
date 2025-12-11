@@ -48,7 +48,8 @@ var createCmd = &cobra.Command{
 }
 
 func createFromFile(filepath string) error {
-	data, err := os.ReadFile(filepath)
+	// The CLI is expected to read user-specified manifest files.
+	data, err := os.ReadFile(filepath) //nolint:gosec // filepath comes from user input by design
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", filepath, err)
 	}

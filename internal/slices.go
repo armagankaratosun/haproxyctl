@@ -30,5 +30,6 @@ func Contains(slice []string, item string) bool {
 
 // SplitResourceName splits a resource string like "type/name" into its components.
 func SplitResourceName(resource string) []string {
-	return strings.SplitN(resource, "/", 2)
+	const resourceNameParts = 2
+	return strings.SplitN(resource, "/", resourceNameParts)
 }
