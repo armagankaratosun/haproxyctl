@@ -79,32 +79,32 @@ var getConfigurationGlobalCmd = &cobra.Command{
 	},
 }
 
-// getConfigurationDefaultsCmd fetches the HAProxy defaults section via JSON.
+// getConfigurationDefaultsCmd fetches a named HAProxy defaults section via JSON.
 var getConfigurationDefaultsCmd = &cobra.Command{
-	Use:   "defaults",
+	Use:   "defaults <name>",
 	Short: "Retrieves HAProxy defaults configuration",
-	Long:  `Retrieves the HAProxy "defaults" section as JSON/YAML.`,
-	Run: func(cmd *cobra.Command, _ []string) {
+	Long:  `Retrieve a specific HAProxy defaults section as table/JSON/YAML.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
 		outputFormat := internal.GetFlagString(cmd, "output")
 
-		list, err := internal.GetResourceList("/services/haproxy/configuration/defaults")
+		name := args[0]
+		obj, err := internal.GetResource("/services/haproxy/configuration/defaults/" + name)
 		if err != nil {
 			if internal.IsNotFoundError(err) {
-				_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
+				_, _ = fmt.Fprintf(os.Stdout, "configuration/defaults %s not found\n", name)
 				return
 			}
-			log.Fatalf("Failed to fetch defaults configuration: %v", err)
+			log.Fatalf("Failed to fetch defaults configuration %q: %v", name, err)
 		}
 
-		if len(list) == 0 {
-			_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
-			return
+		cfg := mapDefaultsFromAPI(obj)
+		if cfg.Name == "" {
+			cfg.Name = name
 		}
-
-		cfg := mapDefaultsFromAPI(list[0])
 
 		if outputFormat == "" && cfg.isEmpty() {
-			_, _ = fmt.Fprintln(os.Stdout, "configuration/defaults no rules defined")
+			_, _ = fmt.Fprintf(os.Stdout, "configuration/defaults %s no rules defined\n", name)
 			return
 		}
 

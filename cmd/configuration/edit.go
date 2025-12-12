@@ -67,25 +67,14 @@ var EditGlobalsCmd = &cobra.Command{
 	},
 }
 
-// EditDefaultsCmd represents "edit configuration defaults".
+// EditDefaultsCmd represents "edit configuration defaults <name>".
 var EditDefaultsCmd = &cobra.Command{
-	Use:   "defaults",
-	Short: "Edit HAProxy defaults configuration in your editor",
-	Args:  cobra.NoArgs,
-	Run: func(_ *cobra.Command, _ []string) {
-		if err := editSection(
-			"/services/haproxy/configuration/defaults",
-			"Defaults",
-			"haproxyctl-defaults-",
-			func(obj map[string]interface{}) interface{} { return mapDefaultsFromAPI(obj) },
-			func(version int, cfg interface{}) error {
-				d, ok := cfg.(DefaultsConfig)
-				if !ok {
-					return fmt.Errorf("expected DefaultsConfig, got %T", cfg)
-				}
-				return putDefaults(version, d)
-			},
-		); err != nil {
+	Use:   "defaults <name>",
+	Short: "Edit a named HAProxy defaults section in your editor",
+	Args:  cobra.ExactArgs(1),
+	Run: func(_ *cobra.Command, args []string) {
+		name := args[0]
+		if err := editDefaults(name); err != nil {
 			log.Fatalf("Edit defaults failed: %v", err)
 		}
 	},
@@ -94,6 +83,75 @@ var EditDefaultsCmd = &cobra.Command{
 func init() {
 	EditConfigurationCmd.AddCommand(EditGlobalsCmd)
 	EditConfigurationCmd.AddCommand(EditDefaultsCmd)
+}
+
+// editDefaults opens a specific defaults section identified by name in the
+// user's editor and updates it via the Data Plane API v3.
+func editDefaults(name string) error {
+	version, err := internal.GetConfigurationVersion()
+	if err != nil {
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
+	}
+
+	obj, err := internal.GetResource("/services/haproxy/configuration/defaults/" + name)
+	if err != nil {
+		return fmt.Errorf("failed to fetch defaults configuration %q: %w", name, err)
+	}
+
+	manifest := mapDefaultsFromAPI(obj)
+	// Ensure the manifest always carries the name we are editing.
+	if manifest.Name == "" {
+		manifest.Name = name
+	}
+
+	origYAML, err := yaml.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal defaults configuration to YAML: %w", err)
+	}
+
+	tmpFile, err := internal.WriteTempYAML("haproxyctl-defaults-"+name+"-", manifest)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if rmErr := os.Remove(tmpFile); rmErr != nil {
+			log.Printf("warning: failed to remove temp file %q: %v", tmpFile, rmErr)
+		}
+	}()
+
+	if err := internal.OpenInEditor(tmpFile); err != nil {
+		return err
+	}
+
+	editedYAML, err := os.ReadFile(tmpFile) //nolint:gosec // tmpFile is controlled by this process
+	if err != nil {
+		return fmt.Errorf("failed to read edited file: %w", err)
+	}
+
+	if bytes.Equal(bytes.TrimSpace(origYAML), bytes.TrimSpace(editedYAML)) {
+		internal.PrintStatus("Defaults", name, internal.ActionUnchanged)
+		return nil
+	}
+
+	var edited DefaultsConfig
+	if err := yaml.Unmarshal(editedYAML, &edited); err != nil {
+		return fmt.Errorf("failed to parse edited defaults YAML: %w", err)
+	}
+
+	// Enforce no rename via edit; name must stay consistent.
+	if edited.Name != "" && edited.Name != name {
+		return fmt.Errorf("cannot rename defaults via edit (got %q, expected %q)", edited.Name, name)
+	}
+	if edited.Name == "" {
+		edited.Name = name
+	}
+
+	if err := putDefaults(version, edited); err != nil {
+		return err
+	}
+
+	internal.PrintStatus("Defaults", name, internal.ActionConfigured)
+	return nil
 }
 
 func editSection(

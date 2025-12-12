@@ -17,10 +17,18 @@ limitations under the License.
 package backends
 
 import (
+	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
+)
+
+// indirection for easier testing.
+var (
+	getBackendsResource     = internal.GetResource
+	getBackendsResourceList = internal.GetResourceList
 )
 
 // GetBackendsCmd represents "get backends".
@@ -51,7 +59,7 @@ func getBackends(cmd *cobra.Command, backendName string) {
 
 	if backendName == "" {
 		// Fetch all backends (list)
-		data, err = internal.GetResourceList("/services/haproxy/configuration/backends")
+		data, err = getBackendsResourceList("/services/haproxy/configuration/backends")
 		if err != nil {
 			log.Fatalf("Failed to fetch backends: %v", err)
 		}
@@ -67,14 +75,20 @@ func getBackends(cmd *cobra.Command, backendName string) {
 		}
 	} else {
 		// Fetch a specific backend (single object)
-		data, err = internal.GetResource("/services/haproxy/configuration/backends/" + backendName)
-		if err != nil {
-			log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
+		data, err = getBackendsResource("/services/haproxy/configuration/backends/" + backendName)
+		if err == nil {
+			if backend, ok := data.(map[string]interface{}); ok {
+				internal.EnrichBackendWithServers(backend)
+			}
 		}
+	}
 
-		if backend, ok := data.(map[string]interface{}); ok {
-			internal.EnrichBackendWithServers(backend)
+	if err != nil {
+		if backendName != "" && internal.IsNotFoundError(err) {
+			_, _ = fmt.Fprintln(os.Stdout, internal.ResourceID("Backend", backendName)+" not found")
+			return
 		}
+		log.Fatalf("Failed to fetch backend(s): %v", err)
 	}
 
 	internal.FormatOutput(data, outputFormat)

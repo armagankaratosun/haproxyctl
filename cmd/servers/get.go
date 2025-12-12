@@ -22,8 +22,15 @@ import (
 	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
+)
+
+// indirection for easier testing.
+var (
+	getServersBackendResource = internal.GetResource
+	sendServersRequest        = internal.SendRequestWithContext
 )
 
 // GetServersCmd represents "get servers".
@@ -49,12 +56,29 @@ Examples:
 
 // getServers fetches the list of servers or a specific server from a backend.
 func getServers(cmd *cobra.Command, backendName, serverName string) {
+	// First, ensure the backend exists so that a non-existent backend
+	// does not quietly appear as "No resources found" when listing
+	// servers.
+	if _, err := getServersBackendResource("/services/haproxy/configuration/backends/" + backendName); err != nil {
+		if internal.IsNotFoundError(err) {
+			_, _ = fmt.Fprintf(os.Stderr, "Error: backend %q not found\n\n", backendName)
+			_ = cmd.Usage()
+			return
+		}
+		log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
+	}
+
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/backends/%s/servers", backendName)
 	if serverName != "" {
 		endpoint += "/" + serverName
 	}
-	data, err := internal.SendRequestWithContext(cmd.Context(), "GET", endpoint, nil, nil)
+	data, err := sendServersRequest(cmd.Context(), "GET", endpoint, nil, nil)
 	if err != nil {
+		if internal.IsNotFoundError(err) && serverName != "" {
+			displayName := fmt.Sprintf("%s/%s", backendName, serverName)
+			_, _ = fmt.Fprintln(os.Stdout, internal.ResourceID("Server", displayName)+" not found")
+			return
+		}
 		log.Fatalf("Failed to fetch server(s) from backend '%s': %v", backendName, err)
 	}
 

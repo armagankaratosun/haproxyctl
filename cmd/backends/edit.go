@@ -107,9 +107,7 @@ func editBackend(backendName string) error {
 
 	// If unchanged, exit quietly
 	if bytes.Equal(bytes.TrimSpace(origYAML), bytes.TrimSpace(editedYAML)) {
-		if _, err := fmt.Fprintln(os.Stdout, "No changes made; exiting without update."); err != nil {
-			log.Printf("warning: failed to write no-change message for backend %q: %v", backendName, err)
-		}
+		internal.PrintStatus("Backend", backendName, internal.ActionUnchanged)
 		return nil
 	}
 

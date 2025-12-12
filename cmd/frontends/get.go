@@ -18,10 +18,18 @@ limitations under the License.
 package frontends
 
 import (
+	"fmt"
 	"haproxyctl/internal"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
+)
+
+// indirection for easier testing.
+var (
+	getFrontendsResource     = internal.GetResource
+	getFrontendsResourceList = internal.GetResourceList
 )
 
 // GetFrontendsCmd represents "get frontends".
@@ -44,14 +52,14 @@ func getFrontends(cmd *cobra.Command, frontendName string) {
 	var err error
 
 	if frontendName != "" {
-		data, err = internal.GetResource("/services/haproxy/configuration/frontends/" + frontendName)
+		data, err = getFrontendsResource("/services/haproxy/configuration/frontends/" + frontendName)
 		if err == nil {
 			if frontend, ok := data.(map[string]interface{}); ok {
 				internal.EnrichFrontendWithBinds(frontend)
 			}
 		}
 	} else {
-		data, err = internal.GetResourceList("/services/haproxy/configuration/frontends")
+		data, err = getFrontendsResourceList("/services/haproxy/configuration/frontends")
 		if err == nil {
 			if frontendList, ok := data.([]map[string]interface{}); ok {
 				for i := range frontendList {
@@ -65,6 +73,10 @@ func getFrontends(cmd *cobra.Command, frontendName string) {
 	}
 
 	if err != nil {
+		if frontendName != "" && internal.IsNotFoundError(err) {
+			_, _ = fmt.Fprintln(os.Stdout, internal.ResourceID("Frontend", frontendName)+" not found")
+			return
+		}
 		log.Fatalf("Failed to fetch frontend(s): %v", err)
 	}
 

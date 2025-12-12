@@ -88,7 +88,7 @@ Examples:
 			log.Fatalf("failed to push raw configuration: %v", err)
 		}
 
-		cmd.Println("raw configuration pushed")
+		internal.PrintStatus("Configuration", "raw", internal.ActionConfigured)
 	},
 }
 
