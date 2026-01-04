@@ -108,7 +108,9 @@ func TestGetSortedKeys(t *testing.T) {
 	if keys[0] != "name" {
 		t.Fatalf("expected primary key 'name', got %s", keys[0])
 	}
-	if !(keys[1] == "log" && keys[2] == "mode" || keys[1] == "mode" && keys[2] == "log") {
+	ok := (keys[1] == "log" && keys[2] == "mode") ||
+		(keys[1] == "mode" && keys[2] == "log")
+	if !ok {
 		t.Fatalf("unexpected secondary key order: %v", keys[1:])
 	}
 }

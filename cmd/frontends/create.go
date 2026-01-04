@@ -1,5 +1,3 @@
-// cmd/frontends/create.go
-
 /*
 Copyright © 2025 Armagan Karatosun
 

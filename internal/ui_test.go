@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"bytes"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -30,7 +30,7 @@ func TestPrintStatus(t *testing.T) {
 		PrintStatus("Backend", "mybackend", ActionCreated)
 	})
 	want := "backend/mybackend created"
-	if !bytes.Contains([]byte(output), []byte(want)) {
+	if !strings.Contains(output, want) {
 		t.Fatalf("expected output to contain %q, got: %s", want, output)
 	}
 }
@@ -40,7 +40,7 @@ func TestPrintDryRun(t *testing.T) {
 		PrintDryRun()
 	})
 	want := "Dry run mode enabled. No changes made."
-	if !bytes.Contains([]byte(output), []byte(want)) {
+	if !strings.Contains(output, want) {
 		t.Fatalf("expected output to contain %q, got: %s", want, output)
 	}
 }

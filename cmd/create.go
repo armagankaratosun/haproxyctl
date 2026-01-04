@@ -20,9 +20,11 @@ package cmd
 import (
 	"fmt"
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/certificates"
 	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
+	"haproxyctl/cmd/userlists"
 	"log"
 	"os"
 	"strings"
@@ -70,8 +72,10 @@ func createFromFile(filepath string) error {
 		return backends.CreateBackendFromFile(data)
 	case "server":
 		return servers.CreateServerFromFile(data)
+	case "userlist":
+		return userlists.CreateUserlistFromFile(data)
 	default:
-		return fmt.Errorf("unsupported resource kind: %s (supported: Backend, Server)", metadata.Kind)
+		return fmt.Errorf("unsupported resource kind: %s (supported: Backend, Server, Userlist)", metadata.Kind)
 	}
 }
 
@@ -80,10 +84,11 @@ func init() {
 
 	// Add subcommands for explicit CLI resource creation (with positional args).
 	createCmd.AddCommand(backends.CreateBackendsCmd)
+	createCmd.AddCommand(certificates.CreateCertificatesCmd)
 	createCmd.AddCommand(servers.CreateServersCmd)
 	createCmd.AddCommand(frontends.CreateFrontendsCmd)
 	createCmd.AddCommand(configuration.CreateConfigurationCmd)
 
-	// Global flag for file-based creation (works for both backends and servers)
-	createCmd.Flags().StringVarP(&createFile, "file", "f", "", "Create resource from YAML file (supports kind: Backend and kind: Server)")
+	// Global flag for file-based creation (works for multiple resource kinds)
+	createCmd.Flags().StringVarP(&createFile, "file", "f", "", "Create resource from YAML file (supports kind: Backend, Server, and Userlist)")
 }

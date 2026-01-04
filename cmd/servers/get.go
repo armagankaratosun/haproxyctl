@@ -27,12 +27,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// indirection for easier testing.
-var (
-	getServersBackendResource = internal.GetResource
-	sendServersRequest        = internal.SendRequestWithContext
-)
-
 // GetServersCmd represents "get servers".
 var GetServersCmd = &cobra.Command{
 	Use:     "servers <backend_name> [server_name]",
@@ -59,7 +53,7 @@ func getServers(cmd *cobra.Command, backendName, serverName string) {
 	// First, ensure the backend exists so that a non-existent backend
 	// does not quietly appear as "No resources found" when listing
 	// servers.
-	if _, err := getServersBackendResource("/services/haproxy/configuration/backends/" + backendName); err != nil {
+	if _, err := internal.GetResource("/services/haproxy/configuration/backends/" + backendName); err != nil {
 		if internal.IsNotFoundError(err) {
 			_, _ = fmt.Fprintf(os.Stderr, "Error: backend %q not found\n\n", backendName)
 			_ = cmd.Usage()
@@ -72,7 +66,7 @@ func getServers(cmd *cobra.Command, backendName, serverName string) {
 	if serverName != "" {
 		endpoint += "/" + serverName
 	}
-	data, err := sendServersRequest(cmd.Context(), "GET", endpoint, nil, nil)
+	data, err := internal.SendRequestWithContext(cmd.Context(), "GET", endpoint, nil, nil)
 	if err != nil {
 		if internal.IsNotFoundError(err) && serverName != "" {
 			displayName := fmt.Sprintf("%s/%s", backendName, serverName)

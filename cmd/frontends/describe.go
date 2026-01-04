@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package backends provides commands to manage HAProxy backends.
-package backends
+// Package frontends provides commands to manage HAProxy frontends.
+package frontends
 
 import (
 	"fmt"
@@ -28,62 +28,57 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DescribeBackendsCmd represents "describe backends".
-var DescribeBackendsCmd = &cobra.Command{
-	Use:   "backends <backend_name>",
-	Short: "Describe a specific HAProxy backend and its servers",
+// DescribeFrontendsCmd represents "describe frontends".
+var DescribeFrontendsCmd = &cobra.Command{
+	Use:   "frontends <frontend_name>",
+	Short: "Describe a specific HAProxy frontend and its binds",
 	Args:  cobra.ExactArgs(1),
 	Run: func(_ *cobra.Command, args []string) {
-		backendName := args[0]
-		describeBackend(backendName)
+		frontendName := args[0]
+		describeFrontend(frontendName)
 	},
 }
 
-// describeBackend fetches a backend and its servers, and prints a detailed description.
-func describeBackend(backendName string) {
-	backend, err := internal.GetResource("/services/haproxy/configuration/backends/" + backendName)
+// describeFrontend fetches a frontend and its binds, and prints a detailed description.
+func describeFrontend(frontendName string) {
+	frontend, err := internal.GetResource("/services/haproxy/configuration/frontends/" + frontendName)
 	if err != nil {
-		log.Fatalf("Failed to fetch backend '%s': %v", backendName, err)
+		log.Fatalf("Failed to fetch frontend '%s': %v", frontendName, err)
 	}
 
-	servers, err := internal.GetResourceList("/services/haproxy/configuration/backends/" + backendName + "/servers")
-	if err != nil {
-		log.Fatalf("Failed to fetch servers for backend '%s': %v", backendName, err)
-	}
+	// Attach binds to the frontend object so they can be shown in the "listeners" section.
+	internal.EnrichFrontendWithBinds(frontend)
 
-	httpRequestRules := fetchBackendListSection(backendName, "HTTP request rules", "/services/haproxy/configuration/backends/"+backendName+"/http_request_rules")
-	httpResponseRules := fetchBackendListSection(backendName, "HTTP response rules", "/services/haproxy/configuration/backends/"+backendName+"/http_response_rules")
-	tcpRequestRules := fetchBackendListSection(backendName, "TCP request rules", "/services/haproxy/configuration/backends/"+backendName+"/tcp_request_rules")
-	httpChecks := fetchBackendListSection(backendName, "HTTP checks", "/services/haproxy/configuration/backends/"+backendName+"/http_checks")
-	tcpChecks := fetchBackendListSection(backendName, "TCP checks", "/services/haproxy/configuration/backends/"+backendName+"/tcp_checks")
+	httpRequestRules := fetchFrontendListSection(frontendName, "HTTP request rules", "/services/haproxy/configuration/frontends/"+frontendName+"/http_request_rules")
+	httpResponseRules := fetchFrontendListSection(frontendName, "HTTP response rules", "/services/haproxy/configuration/frontends/"+frontendName+"/http_response_rules")
+	tcpRequestRules := fetchFrontendListSection(frontendName, "TCP request rules", "/services/haproxy/configuration/frontends/"+frontendName+"/tcp_request_rules")
 
-	internal.PrintResourceDescription(backendKind, backend, backendDescriptionSections(), servers)
+	internal.PrintResourceDescription("Frontend", frontend, frontendDescriptionSections(), nil)
 
 	printRuleSection("HTTP Request Rules", httpRequestRules)
 	printRuleSection("HTTP Response Rules", httpResponseRules)
 	printRuleSection("TCP Request Rules", tcpRequestRules)
-	printRuleSection("HTTP Checks", httpChecks)
-	printRuleSection("TCP Checks", tcpChecks)
 }
 
-// backendDescriptionSections defines the sections and fields to display in backend descriptions.
-func backendDescriptionSections() map[string][]string {
+// frontendDescriptionSections defines the sections and fields to display in frontend descriptions.
+func frontendDescriptionSections() map[string][]string {
 	return map[string][]string{
-		"basic":          {"name", "mode", "balance"},
-		"timeouts":       {"timeout_client", "timeout_queue", "timeout_server"},
-		"advanced":       {"tcpka", "redispatch"},
-		"default_server": {"alpn", "check", "check_alpn", "maxconn", "weight"},
+		"basic":     {"name", "mode", "default_backend"},
+		"listeners": {"binds"},
+		"timeouts":  {"timeout_client", "timeout_http_request", "timeout_http_keep_alive"},
+		"logging":   {"log"},
+		"options":   {"forwardfor"},
 	}
 }
 
-// fetchBackendListSection retrieves a list-valued configuration section for a backend,
-// such as HTTP/TCP rules or checks. Failures are logged as warnings so that describe
-// output remains as complete as possible.
-func fetchBackendListSection(backendName, sectionLabel, endpoint string) []map[string]interface{} {
+// fetchFrontendListSection retrieves a list-valued configuration section for a frontend,
+// such as HTTP/TCP rules. Failures are logged as warnings so that describe output
+// remains as complete as possible.
+func fetchFrontendListSection(frontendName, sectionLabel, endpoint string) []map[string]interface{} {
 	list, err := internal.GetResourceList(endpoint)
 	if err != nil {
 		if !internal.IsNotFoundError(err) {
-			log.Printf("warning: failed to fetch %s for backend %q: %v", sectionLabel, backendName, err)
+			log.Printf("warning: failed to fetch %s for frontend %q: %v", sectionLabel, frontendName, err)
 		}
 		return nil
 	}
@@ -134,7 +129,6 @@ func summarizeRule(rule map[string]interface{}) string {
 		}
 	}
 
-	// For checks, "uri" or "port" is often interesting.
 	if uri := extractString(rule, "uri"); uri != "" {
 		parts = append(parts, "uri="+uri)
 	}
@@ -171,15 +165,10 @@ func extractInt(m map[string]interface{}, key string) (int, bool) {
 	case int64:
 		return int(t), true
 	case string:
-		// best-effort parse for string indices
 		n, err := strconv.Atoi(t)
 		if err == nil {
 			return n, true
 		}
 	}
 	return 0, false
-}
-
-func init() {
-	DescribeBackendsCmd.Flags().StringP("output", "o", "", "Output format: table, yaml, or json")
 }

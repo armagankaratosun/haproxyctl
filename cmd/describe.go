@@ -21,6 +21,7 @@ import (
 	"log"
 
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
 
 	"github.com/spf13/cobra"
@@ -40,5 +41,6 @@ func init() {
 
 	// Add subcommands.
 	describeCmd.AddCommand(backends.DescribeBackendsCmd)
+	describeCmd.AddCommand(frontends.DescribeFrontendsCmd)
 	describeCmd.AddCommand(servers.DescribeServersCmd)
 }

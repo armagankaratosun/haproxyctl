@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package backends provides commands to manage HAProxy backends.
-package backends
+// Package userlists provides commands to manage HAProxy userlists, users, and groups.
+package userlists
 
 import (
+	"fmt"
 	"haproxyctl/internal"
 	"log"
 	"strconv"
@@ -25,33 +26,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DeleteBackendsCmd represents "delete backends".
-var DeleteBackendsCmd = &cobra.Command{
-	Use:   "backends <backend_name>",
-	Short: "Delete a specific HAProxy backend",
+// DeleteUserlistsCmd represents "delete userlists".
+var DeleteUserlistsCmd = &cobra.Command{
+	Use:   "userlists <name>",
+	Short: "Delete a HAProxy userlist",
 	Args:  cobra.ExactArgs(1),
 	Run: func(_ *cobra.Command, args []string) {
-		backendName := args[0]
-		deleteBackend(backendName)
+		name := args[0]
+		if err := DeleteUserlistByName(name); err != nil {
+			log.Fatalf("Failed to delete userlist %q: %v", name, err)
+		}
 	},
 }
 
-// deleteBackend handles backend deletion.
-func deleteBackend(backendName string) {
+// DeleteUserlistByName deletes a userlist using the configuration versioned DELETE.
+func DeleteUserlistByName(name string) error {
 	version, err := internal.GetConfigurationVersion()
 	if err != nil {
-		log.Fatalf("Failed to fetch HAProxy configuration version: %v", err)
+		return fmt.Errorf("failed to fetch HAProxy configuration version: %w", err)
 	}
 
-	endpoint := "/services/haproxy/configuration/backends/" + backendName
-	_, err = internal.SendRequest("DELETE",
+	endpoint := "/services/haproxy/configuration/userlists/" + name
+	_, err = internal.SendRequest(
+		"DELETE",
 		endpoint,
 		map[string]string{"version": strconv.Itoa(version)},
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Failed to delete backend '%s': %v", backendName, err)
+		return internal.FormatAPIError("Userlist", name, "delete", err)
 	}
 
-	internal.PrintStatus("Backend", backendName, internal.ActionDeleted)
+	internal.PrintStatus("Userlist", name, internal.ActionDeleted)
+	return nil
 }

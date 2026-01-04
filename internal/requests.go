@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
@@ -226,4 +227,67 @@ func GetResourceList(endpoint string) ([]map[string]interface{}, error) {
 	}
 
 	return resourceList, nil
+}
+
+// UploadSSLCertificateWithContext uploads a PEM bundle (key + cert + optional
+// chain) to the HAProxy Data Plane API ssl_certificates storage.
+func UploadSSLCertificateWithContext(ctx context.Context, name string, pem []byte) error {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	baseURL := normalizeAPIBaseURL(cfg.APIBaseURL)
+	url := baseURL + "/services/haproxy/storage/ssl_certificates"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	filename := name + ".pem"
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return fmt.Errorf("failed to create multipart form file: %w", err)
+	}
+
+	if _, err := part.Write(pem); err != nil {
+		return fmt.Errorf("failed to write PEM data: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to finalize multipart body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return fmt.Errorf("failed to create SSL certificate upload request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.SetBasicAuth(cfg.Username, cfg.Password)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("SSL certificate upload failed: %w", err)
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+		}
+	}()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read SSL certificate upload response: %w", err)
+	}
+
+	if resp.StatusCode >= httpErrorThreshold {
+		return fmt.Errorf("HAProxy API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+// UploadSSLCertificate is a convenience wrapper around UploadSSLCertificateWithContext
+// using a background context.
+func UploadSSLCertificate(name string, pem []byte) error {
+	return UploadSSLCertificateWithContext(context.Background(), name, pem)
 }

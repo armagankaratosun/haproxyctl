@@ -1,4 +1,3 @@
-// Package backends provides commands to manage HAProxy backends.
 /*
 Copyright © 2025 Armagan Karatosun
 
@@ -14,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package backends provides commands to manage HAProxy backends.
 package backends
 
 import (
@@ -23,12 +24,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-)
-
-// indirection for easier testing.
-var (
-	getBackendsResource     = internal.GetResource
-	getBackendsResourceList = internal.GetResourceList
 )
 
 // GetBackendsCmd represents "get backends".
@@ -59,7 +54,7 @@ func getBackends(cmd *cobra.Command, backendName string) {
 
 	if backendName == "" {
 		// Fetch all backends (list)
-		data, err = getBackendsResourceList("/services/haproxy/configuration/backends")
+		data, err = internal.GetResourceList("/services/haproxy/configuration/backends")
 		if err != nil {
 			log.Fatalf("Failed to fetch backends: %v", err)
 		}
@@ -75,7 +70,7 @@ func getBackends(cmd *cobra.Command, backendName string) {
 		}
 	} else {
 		// Fetch a specific backend (single object)
-		data, err = getBackendsResource("/services/haproxy/configuration/backends/" + backendName)
+		data, err = internal.GetResource("/services/haproxy/configuration/backends/" + backendName)
 		if err == nil {
 			if backend, ok := data.(map[string]interface{}); ok {
 				internal.EnrichBackendWithServers(backend)

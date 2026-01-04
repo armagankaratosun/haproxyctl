@@ -32,12 +32,14 @@ func TestGlobalConfig_Defaults(t *testing.T) {
 }
 
 func TestDefaultsConfig_Defaults(t *testing.T) {
+	const timeout30s = "30s"
+
 	cfg := DefaultsConfig{
 		APIVersion:     "haproxyctl/v1",
 		Kind:           kindDefaults,
 		Mode:           "http",
-		TimeoutClient:  "30s",
-		TimeoutServer:  "30s",
+		TimeoutClient:  timeout30s,
+		TimeoutServer:  timeout30s,
 		TimeoutConnect: "5s",
 		Balance:        "roundrobin",
 	}
@@ -48,7 +50,7 @@ func TestDefaultsConfig_Defaults(t *testing.T) {
 	if cfg.Mode != "http" {
 		t.Fatalf("expected Mode http, got %s", cfg.Mode)
 	}
-	if cfg.TimeoutClient != "30s" || cfg.TimeoutServer != "30s" {
+	if cfg.TimeoutClient != timeout30s || cfg.TimeoutServer != timeout30s {
 		t.Fatalf("unexpected timeout values: %+v", cfg)
 	}
 	if cfg.Balance != "roundrobin" {
@@ -57,6 +59,8 @@ func TestDefaultsConfig_Defaults(t *testing.T) {
 }
 
 func TestMapGlobalFromAPIAndIsEmpty(t *testing.T) {
+	const timeout30s = "30s"
+
 	// Empty map should produce an "empty" config.
 	emptyCfg := mapGlobalFromAPI(map[string]interface{}{})
 	if !emptyCfg.isEmpty() {
@@ -71,7 +75,7 @@ func TestMapGlobalFromAPIAndIsEmpty(t *testing.T) {
 		"log":               "stdout format raw local0",
 		"log_send_hostname": "myhost",
 		"stats_socket":      "/var/run/haproxy.sock",
-		"stats_timeout":     "30s",
+		"stats_timeout":     timeout30s,
 		"spread_checks":     float64(5),
 	}
 
@@ -101,7 +105,7 @@ func TestMapGlobalFromAPIAndIsEmpty(t *testing.T) {
 	if cfg.StatsSocket != "/var/run/haproxy.sock" {
 		t.Fatalf("unexpected StatsSocket: %s", cfg.StatsSocket)
 	}
-	if cfg.StatsTimeout != "30s" {
+	if cfg.StatsTimeout != timeout30s {
 		t.Fatalf("unexpected StatsTimeout: %s", cfg.StatsTimeout)
 	}
 	if cfg.SpreadChecks != 5 {

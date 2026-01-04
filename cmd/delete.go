@@ -25,8 +25,10 @@ import (
 	"strings"
 
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/certificates"
 	"haproxyctl/cmd/frontends"
 	"haproxyctl/cmd/servers"
+	"haproxyctl/cmd/userlists"
 	"haproxyctl/internal"
 
 	"github.com/spf13/cobra"
@@ -54,8 +56,10 @@ func init() {
 
 	// Add subcommands.
 	deleteCmd.AddCommand(backends.DeleteBackendsCmd)
+	deleteCmd.AddCommand(certificates.DeleteCertificatesCmd)
 	deleteCmd.AddCommand(servers.DeleteServersCmd)
 	deleteCmd.AddCommand(frontends.DeleteFrontendsCmd)
+	deleteCmd.AddCommand(userlists.DeleteUserlistsCmd)
 }
 
 func deleteFromFile(filepath string) error {
@@ -90,6 +94,8 @@ func deleteFromFile(filepath string) error {
 		return deleteBackendByName(meta.Name)
 	case "frontend":
 		return deleteFrontendByName(meta.Name)
+	case "userlist":
+		return userlists.DeleteUserlistByName(meta.Name)
 	case "server":
 		backendName := meta.Parent
 		if backendName == "" {
@@ -100,7 +106,7 @@ func deleteFromFile(filepath string) error {
 		}
 		return servers.DeleteServer(backendName, meta.Name)
 	default:
-		return fmt.Errorf("unsupported resource kind: %s (supported: Backend, Frontend, Server)", meta.Kind)
+		return fmt.Errorf("unsupported resource kind: %s (supported: Backend, Frontend, Server, Userlist)", meta.Kind)
 	}
 }
 

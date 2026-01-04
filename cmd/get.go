@@ -3,9 +3,14 @@ package cmd
 import (
 	"haproxyctl/cmd/acls"
 	"haproxyctl/cmd/backends"
+	"haproxyctl/cmd/certificates"
 	"haproxyctl/cmd/configuration"
 	"haproxyctl/cmd/frontends"
+	"haproxyctl/cmd/reloads"
 	"haproxyctl/cmd/servers"
+	"haproxyctl/cmd/stats"
+	"haproxyctl/cmd/transactions"
+	"haproxyctl/cmd/userlists"
 
 	"github.com/spf13/cobra"
 )
@@ -37,8 +42,13 @@ func init() {
 	// Add subcommands.
 	getCmd.AddCommand(acls.GetACLsCmd)
 	getCmd.AddCommand(backends.GetBackendsCmd)
+	getCmd.AddCommand(certificates.GetCertificatesCmd)
 	getCmd.AddCommand(configuration.GetConfigurationCmd)
 	getCmd.AddCommand(frontends.GetFrontendsCmd)
+	getCmd.AddCommand(reloads.GetReloadsCmd)
+	getCmd.AddCommand(stats.GetStatsCmd)
+	getCmd.AddCommand(transactions.GetTransactionsCmd)
+	getCmd.AddCommand(userlists.GetUserlistsCmd)
 	getCmd.AddCommand(servers.GetServersCmd)
 
 	getCmd.PersistentFlags().StringP("output", "o", "", "Output format: yaml or json (default: table)")

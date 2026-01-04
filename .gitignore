@@ -24,3 +24,6 @@ go.work.sum
 
 # env file
 .env
+
+# Local copy of the Data Plane API v3 specification (not distributed)
+v3_specification.yaml

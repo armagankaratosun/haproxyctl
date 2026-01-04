@@ -27,9 +27,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// indirection for easier testing.
-var getACLsRequest = internal.SendRequestWithContext
-
 // GetACLsCmd represents "get acls <frontend_name>".
 var GetACLsCmd = &cobra.Command{
 	Use:     "acls <frontend_name>",
@@ -46,7 +43,7 @@ var GetACLsCmd = &cobra.Command{
 func getACLs(frontendName string, cmd *cobra.Command) {
 	endpoint := fmt.Sprintf("/services/haproxy/configuration/frontends/%s/acls", frontendName)
 
-	data, err := getACLsRequest(cmd.Context(), "GET", endpoint, nil, nil)
+	data, err := internal.SendRequestWithContext(cmd.Context(), "GET", endpoint, nil, nil)
 	if err != nil {
 		if internal.IsNotFoundError(err) {
 			_, _ = fmt.Fprintf(os.Stderr, "Error: frontend %q not found\n\n", frontendName)
